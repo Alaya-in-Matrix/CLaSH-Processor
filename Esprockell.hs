@@ -108,9 +108,35 @@ mem <~~ (we, addr, val) = case we of
                              False -> mem
                              True  -> replace addr val mem
 
--- decode :: (IAddr, DAddr) -> ISA -> MachCode
--- decode (pc, sp) instr = case instr of
---     Arith op r0 r1 r2  -> def {ldCode  = LdAlu,  opCode    = op,     fromreg0 = r0, fromreg1 = r1, toreg = r2}
---     Jump  jc jn        -> def {jmpCode = jc,     fromreg0  = jmpreg, jumpN    = jn} -- how is jumpreg used?
---     Load  (RImm  n) r  -> def {ldCode  = LdImm,  immvalueR = n,      toreg    = r}  -- load immediate number n to reg r
---     Load  (RAddr a) r  -> def {ldCode  = LdAddr, fromaddr  = a,      toreg    = r}  -- load from memory locates at a to reg r, 
+decode :: (IAddr, DAddr) -> ISA -> MachCode
+decode (pc, sp) instr = case instr of
+    Arith op r0 r1 r2  -> def {ldCode  = LdAlu,  opCode    = op,     fromreg0 = r0, fromreg1 = r1, toreg = r2}
+    Jump  jc jn        -> def {jmpCode = jc,     fromreg0  = jmpreg, jumpN    = jn} -- how is jumpreg used?
+    Load  (RImm  n) r  -> def {ldCode  = LdImm,  immvalueR = n,      toreg    = r}  -- load immediate number n to reg r
+    Load  (RAddr a) r  -> def {ldCode  = LdAddr, fromaddr  = a,      toreg    = r}  -- load from memory locates at a to reg r,
+    Store (MImm  n) a  -> def {stCode  = StImm,  immvalueS = n,      toaddr   = a, we = True}
+    Store (MAddr i) j  -> def {stCode  = StReg,  fromreg0  = i,      toaddr   = j, we = True}
+    Push r             -> def {stCode  = StReg,  fromreg0  = r,      toaddr   = sp + 1, spCode = Up, we = True}
+    Pop r              -> def {ldCode  = LdAddr, fromaddr  = sp,     toreg    = r,  spCode = Down}
+    EndProg            -> def
+    Debug _            -> def
+
+alu :: OpCode -> (Word, Word) -> (Word, Bool)
+alu opCode (x, y) = (z, cnd)
+  where (z, cnd) = (app opCode x y, testBit z 0)
+        app opCode x y = case opCode of
+            Id -> x
+            Incr -> x + 1
+            Decr -> x - 1
+            Neg  -> negate x
+            Add  -> x + y
+            Sub  -> x - y
+            Mul  -> x * y
+            Eq   -> if (x == y) then 1 else 0
+            Neq  -> if (x /= y) then 1 else 0
+            Gt   -> if (x >  y) then 1 else 0
+            Lt   -> if (x <  y) then 1 else 0
+            And  -> x .&. y
+            Or   -> x .|. y
+            Not  -> undefined
+            NoOp -> 0

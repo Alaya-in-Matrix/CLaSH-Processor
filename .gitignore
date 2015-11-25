@@ -1,0 +1,6 @@
+*.swp
+verilog/
+vhdl/
+systemverilog/
+*.hi
+*.o

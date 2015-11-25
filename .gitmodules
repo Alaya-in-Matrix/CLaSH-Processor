@@ -1,0 +1,6 @@
+[submodule "reference/Sprockell/sprockell"]
+	path = reference/Sprockell/sprockell
+	url = git@github.com:martijnbastiaan/sprockell.git
+[submodule "reference/Sprockell/sprockell.wiki"]
+	path = reference/Sprockell/sprockell.wiki
+	url = https://github.com/martijnbastiaan/sprockell.wiki.git

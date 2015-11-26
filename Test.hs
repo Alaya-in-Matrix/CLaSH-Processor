@@ -70,6 +70,23 @@ progJump = [
     , Jump Back undefined
     ]
 
+progMax :: [ISA]
+progMax = [
+    Store (MImm 3) 0
+    , Store (MImm 4) 1
+    , Load  (RAddr 0) r7
+    , Load  (RAddr 1) r8
+    , Load  (RImm  2) r9 -- inc to pc
+    , Arith Add pcreg r9 jmpreg
+    , Jump  UR 3
+    , Debug (DebugReg r8 4)
+    , EndProg
+    , Arith Lt r7 r8 r9
+    , Jump  CR 2
+    , Arith Id r7 r8 r8 -- move r7 to r8
+    , Jump  Back 0
+    ] 
+
 -- progFib :: [ISA]
 -- progFib = [
 --     Load (RImm 0) r7 -- calc fib(3)

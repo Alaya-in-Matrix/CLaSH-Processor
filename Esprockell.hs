@@ -68,12 +68,6 @@ data ISA = Arith OpCode  RegIdx RegIdx RegIdx
          | EndProg
          | Debug Word
 
-data PState = PState { reg  :: Reg
-                     , dmem :: DMem
-                     , cnd  :: Bool
-                     , pc   :: IAddr
-                     , sp   :: DAddr
-                     } deriving (Eq, Show)
 
 instance Default MachCode where
     def = MachCode { ldCode    = NoLoad
@@ -97,13 +91,14 @@ instance Default MachCode where
 -- {-------------------------------------------------------------
 -- | some constants
 -- -------------------------------------------------------------}
-zeroreg =  0 :: RegIdx
-regA    =  1 :: RegIdx
-regB    =  2 :: RegIdx
-endreg  =  3 :: RegIdx  -- for FOR-loop
-stepreg =  4 :: RegIdx  -- ibid
-jmpreg  =  5 :: RegIdx  -- for jump instructions
-pcreg   =  7 :: RegIdx  -- pc is added at the end of the regbank => regbank0
+zeroreg = 0 :: RegIdx
+regA    = 1 :: RegIdx
+regB    = 2 :: RegIdx
+endreg  = 3 :: RegIdx  -- for FOR-loop
+stepreg = 4 :: RegIdx  -- ibid
+jmpreg  = 5 :: RegIdx  -- for jump instructions
+pcreg   = 7 :: RegIdx  -- pc is added at the end of the regbank => regbank0
+sp0     = 20 :: DAddr
 
 (<~) :: Reg -> (RegIdx, Word) -> Reg
 xs <~ (idx, val) = replace idx val xs
@@ -175,6 +170,21 @@ updateSp spCode sp = case spCode of
     Down -> sp - 1
     None -> sp
 
+
+data PState = PState { reg  :: Reg
+                     , dmem :: DMem
+                     , cnd  :: Bool
+                     , pc   :: IAddr
+                     , sp   :: DAddr
+                     } deriving (Eq, Show)
+
+instance Default PState where
+    def = PState { reg = repeat 0
+                 , dmem = repeat 0
+                 , cnd = False
+                 , pc = 0
+                 , sp = sp0 }
+
 sprockell :: IMem -> PState -> Bit -> (PState, Bit)
 sprockell prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = pc', sp = sp'}, outp)
    where
@@ -189,3 +199,9 @@ sprockell prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = p
      pc'          = updatePC (jmpCode, cnd) (pc, jumpN, x)
      sp'          = updateSp spCode sp
      outp         = inp
+
+topEntity :: IMem -> Signal Bit -> Signal Bit
+topEntity imem = sprockell imem `mealy` def
+
+testImem :: IMem
+testImem = undefined

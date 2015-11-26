@@ -3,6 +3,10 @@ module Esprockell where
 
 import CLaSH.Prelude hiding (Word)
 
+{-------------------------------------------------------------
+| Esprockell: Expanded Simple PROCessor in hasKELL 
+-------------------------------------------------------------}
+
 type Word     = Signed 16
 
 type RegSize  = 8

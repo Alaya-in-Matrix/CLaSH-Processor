@@ -1,3 +1,4 @@
+{-# language RecordWildCards #-}
 module Esprockell where
 
 import CLaSH.Prelude hiding (Word)
@@ -9,7 +10,7 @@ type IMemSize = 128
 type DMemSize = 128
 
 type Reg      = Vec RegSize  Word
-type IMem     = Vec IMemSize Word
+type IMem     = Vec IMemSize ISA
 type DMem     = Vec DMemSize Word
 
 type RegIdx   = Unsigned 3
@@ -104,9 +105,7 @@ pcreg   =  7 :: RegIdx  -- pc is added at the end of the regbank => regbank0
 xs <~ (idx, val) = replace idx val xs
 
 (<~~) :: DMem -> (Bool, DAddr, Word) -> DMem
-mem <~~ (we, addr, val) = case we of
-                             False -> mem
-                             True  -> replace addr val mem
+mem <~~ (we, addr, val) = if we then replace addr val mem else mem
 
 decode :: (IAddr, DAddr) -> ISA -> MachCode
 decode (pc, sp) instr = case instr of
@@ -132,13 +131,13 @@ alu opCode (x, y) = (z, cnd)
             Add  -> x + y
             Sub  -> x - y
             Mul  -> x * y
-            Eq   -> if (x == y) then 1 else 0
-            Neq  -> if (x /= y) then 1 else 0
-            Gt   -> if (x >  y) then 1 else 0
-            Lt   -> if (x <  y) then 1 else 0
+            Eq   -> if x == y then 1 else 0
+            Neq  -> if x /= y then 1 else 0
+            Gt   -> if x >  y then 1 else 0
+            Lt   -> if x <  y then 1 else 0
             And  -> x .&. y
             Or   -> x .|. y
-            Not  -> undefined
+            Not  -> complement x
             NoOp -> 0
 
 load :: Reg -> LdCode -> RegIdx -> (Word, Word, Word) -> Reg
@@ -157,11 +156,32 @@ store dmem stCode (we, addr) (immV, regV) = dmem <~~ (we, addr, v)
               StReg   -> regV
 
 updatePC :: (JmpCode, Bool) -> (IAddr, IAddr, Word) -> IAddr
-updatePC (jmpCode, cnd) (pc, jumpN, x) = pc'
+updatePC (jmpCode, cnd) (pc, jumpN, jmpRegV) = pc'
   where pc' = case jmpCode of
                 NoJump -> pc + 1
                 UA     -> jumpN
                 UR     -> pc + jumpN
                 CA     -> if cnd then jumpN else pc + 1
                 CR     -> if cnd then pc + jumpN else pc + 1
-                Back   -> undefined -- I don't understand here
+                Back   -> fromIntegral jmpRegV -- return value should has been written into jmpreg
+
+updateSp :: SpCode -> DAddr -> DAddr
+updateSp spCode sp = case spCode of
+    Up   -> sp + 1
+    Down -> sp - 1
+    None -> sp
+
+sprockell :: IMem -> PState -> Bit -> (PState, Bit)
+sprockell prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = pc', sp = sp'}, outp)
+   where
+     PState{..}   = state
+     MachCode{..} = decode (pc, sp) (prog !! pc)
+     reg0         = replace pcreg (fromIntegral pc) reg
+     (x, y)       = (reg0 !! fromreg0, reg0 !! fromreg1)
+     mval         = dmem !! fromaddr
+     (z, cnd')    = alu opCode (x, y)
+     reg'         = load reg ldCode toreg (immvalueR, mval, z)
+     dmem'        = store dmem stCode (we, toaddr) (immvalueS, x)
+     pc'          = updatePC (jmpCode, cnd) (pc, jumpN, x)
+     sp'          = updateSp spCode sp
+     outp         = inp

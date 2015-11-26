@@ -124,15 +124,15 @@ prog = [ EndProg ]
 decode :: (IAddr, DAddr) -> ISA -> MachCode
 decode (pc, sp) instr = case instr of
     Arith op r0 r1 r2  -> def {ldCode  = LdAlu,  opCode    = op,     fromreg0 = r0, fromreg1 = r1, toreg = r2}
-    Jump  jc jn        -> def {jmpCode = jc,     fromreg0  = jmpreg, jumpN    = jn} -- how is jmpreg used?
-    Load  (RImm  n) r  -> def {ldCode  = LdImm,  immvalueR = n,      toreg    = r}  -- load immediate number n to reg r
-    Load  (RAddr a) r  -> def {ldCode  = LdAddr, fromaddr  = a,      toreg    = r}  -- load from memory locates at a to reg r,
+    Jump  jc jn        -> def {jmpCode = jc,     fromreg0  = jmpreg, jumpN    = jn} 
+    Load  (RImm  n) r  -> def {ldCode  = LdImm,  immvalueR = n,      toreg    = r}  
+    Load  (RAddr a) r  -> def {ldCode  = LdAddr, fromaddr  = a,      toreg    = r}  
     Store (MImm  n) a  -> def {stCode  = StImm,  immvalueS = n,      toaddr   = a, we = True}
     Store (MAddr i) a  -> def {stCode  = StReg,  fromreg0  = i,      toaddr   = a, we = True}
     Push r             -> def {stCode  = StReg,  fromreg0  = r,      toaddr   = sp + 1, spCode = Up, we = True}
     Pop r              -> def {ldCode  = LdAddr, fromaddr  = sp,     toreg    = r,  spCode = Down}
     Debug debugCode    -> def {dbCode  = debugCode}
-    EndProg            -> def
+    EndProg            -> def {jmpCode = UR, jumpN = 0} -- loop here forever
 
 alu :: OpCode -> (Word, Word) -> (Word, Bool)
 alu opCode (x, y) = (z, cnd)

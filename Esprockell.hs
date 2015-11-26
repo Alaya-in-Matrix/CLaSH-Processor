@@ -48,7 +48,6 @@ xs <~ (idx, val) = replace idx val xs
 
 (<~~) :: DMem -> (Bool, DAddr, Word) -> DMem
 mem <~~ (we, addr, val) = if we then replace addr val mem else mem
-
 data LdCode  = NoLoad  | LdImm | LdAddr | LdAlu  deriving(Eq, Show)
 data StCode  = NoStore | StImm | StReg           deriving(Eq, Show)
 data SpCode  = None    | Up    | Down            deriving(Eq, Show)
@@ -129,7 +128,7 @@ decode (pc, sp) instr = case instr of
     Load  (RImm  n) r  -> def {ldCode  = LdImm,  immvalueR = n,      toreg    = r}  -- load immediate number n to reg r
     Load  (RAddr a) r  -> def {ldCode  = LdAddr, fromaddr  = a,      toreg    = r}  -- load from memory locates at a to reg r,
     Store (MImm  n) a  -> def {stCode  = StImm,  immvalueS = n,      toaddr   = a, we = True}
-    Store (MAddr i) j  -> def {stCode  = StReg,  fromreg0  = i,      toaddr   = j, we = True}
+    Store (MAddr i) a  -> def {stCode  = StReg,  fromreg0  = i,      toaddr   = a, we = True}
     Push r             -> def {stCode  = StReg,  fromreg0  = r,      toaddr   = sp + 1, spCode = Up, we = True}
     Pop r              -> def {ldCode  = LdAddr, fromaddr  = sp,     toreg    = r,  spCode = Down}
     Debug debugCode    -> def {dbCode  = debugCode}
@@ -203,13 +202,11 @@ instance Default PState where
 
 debug :: (DMem, Reg) -> DebugCode -> (Maybe Word, Bool)
 debug (mem, regs) debugCode = case debugCode of
-    NoDebug           -> (Nothing, True)
-    DebugReg ridx ref -> fuck ref $ regs !? ridx
-    DebugMem addr ref -> fuck ref $ mem  !? addr
-
-fuck :: Word -> Maybe Word -> (Maybe Word, Bool)
-fuck ref Nothing  = (Nothing, False)
-fuck ref (Just v) = (Just v, ref == v)
+                                NoDebug           -> (Nothing, True)
+                                DebugReg ridx ref -> validate ref $ regs !? ridx
+                                DebugMem addr ref -> validate ref $ mem  !? addr
+                                where validate ref Nothing  = (Nothing, False)
+                                      validate ref (Just v) = (Just v, ref == v)
 
 sprockellMealy :: IMem -> PState -> Bit -> (PState, (Maybe Word, Bool))
 sprockellMealy prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = pc', sp = sp'}, outp)
@@ -227,3 +224,5 @@ sprockellMealy prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', p
      outp         = debug (dmem, reg) dbCode
 
 sprockell imem = sprockellMealy imem `mealy` def
+
+topEntity = sprockell 

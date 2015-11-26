@@ -41,12 +41,18 @@ data OpCode = NoOp | Id  | Incr | Decr
             | Add  | Sub | Mul  | Eq | Neq | Gt | Lt | And | Or
             deriving(Eq, Show)
 
+data DebugCode = DebugReg RegIdx -- show value of reg regIdx
+               | DebugMem DAddr  -- show data in memory whose address is addr
+               | NoDebug
+               deriving (Eq, Show)
+
 -- Internal representation of instruction
 data MachCode = MachCode {
     ldCode      :: LdCode
     , stCode    :: StCode   -- store code
     , spCode    :: SpCode   -- stack pointer code
     , opCode    :: OpCode   -- arithmetic code
+    , debugCode :: DebugCode
     , immvalueR :: Word     -- value from immediate to register
     , immvalueS :: Word     -- value from immediate to store
     , fromreg0  :: RegIdx   -- first oprand to compute
@@ -66,7 +72,7 @@ data ISA = Arith OpCode  RegIdx RegIdx RegIdx
          | Push  RegIdx -- what for ?
          | Pop   RegIdx -- what for ?
          | EndProg
-         | Debug Word
+         | Debug DebugCode
 
 
 instance Default MachCode where
@@ -74,6 +80,7 @@ instance Default MachCode where
                    , stCode    = NoStore
                    , spCode    = None
                    , opCode    = NoOp
+                   , debugCode = NoDebug
                    , immvalueR = 0
                    , immvalueS = 0
                    , fromreg0  = 0
@@ -185,7 +192,7 @@ instance Default PState where
                  , pc = 0
                  , sp = sp0 }
 
-sprockell :: IMem -> PState -> Bit -> (PState, Bit)
+sprockell :: IMem -> PState -> Bit -> (PState, Maybe Word)
 sprockell prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = pc', sp = sp'}, outp)
    where
      PState{..}   = state
@@ -198,9 +205,9 @@ sprockell prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = p
      dmem'        = store dmem stCode (we, toaddr) (immvalueS, x)
      pc'          = updatePC (jmpCode, cnd) (pc, jumpN, x)
      sp'          = updateSp spCode sp
-     outp         = inp
+     outp         = Nothing
 
-topEntity :: IMem -> Signal Bit -> Signal Bit
+topEntity :: IMem -> Signal Bit -> Signal (Maybe Word)
 topEntity imem = sprockell imem `mealy` def
 
 testImem :: IMem

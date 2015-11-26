@@ -124,7 +124,7 @@ prog = [ EndProg ]
 decode :: (IAddr, DAddr) -> ISA -> MachCode
 decode (pc, sp) instr = case instr of
     Arith op r0 r1 r2  -> def {ldCode  = LdAlu,  opCode    = op,     fromreg0 = r0, fromreg1 = r1, toreg = r2}
-    Jump  jc jn        -> def {jmpCode = jc,     fromreg0  = jmpreg, jumpN    = jn} -- how is jumpreg used?
+    Jump  jc jn        -> def {jmpCode = jc,     fromreg0  = jmpreg, jumpN    = jn} -- how is jmpreg used?
     Load  (RImm  n) r  -> def {ldCode  = LdImm,  immvalueR = n,      toreg    = r}  -- load immediate number n to reg r
     Load  (RAddr a) r  -> def {ldCode  = LdAddr, fromaddr  = a,      toreg    = r}  -- load from memory locates at a to reg r,
     Store (MImm  n) a  -> def {stCode  = StImm,  immvalueS = n,      toaddr   = a, we = True}

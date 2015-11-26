@@ -140,3 +140,28 @@ alu opCode (x, y) = (z, cnd)
             Or   -> x .|. y
             Not  -> undefined
             NoOp -> 0
+
+load :: Reg -> LdCode -> RegIdx -> (Word, Word, Word) -> Reg
+load regs ldCode toReg (immV, memV, aluV) = regs <~ (toReg, v)
+  where v = case ldCode of
+              NoLoad -> 0 -- Why ? -- 是不是默认情况下，toReg是指向一个恒零寄存器？
+              LdImm  -> immV
+              LdAddr -> memV
+              LdAlu  -> aluV
+
+store :: DMem -> StCode -> (Bool, DAddr) -> (Word, Word) -> DMem
+store dmem stCode (we, addr) (immV, regV) = dmem <~~ (we, addr, v)
+  where v = case stCode of
+              NoStore -> 0
+              StImm   -> immV
+              StReg   -> regV
+
+updatePC :: (JmpCode, Bool) -> (IAddr, IAddr, Word) -> IAddr
+updatePC (jmpCode, cnd) (pc, jumpN, x) = pc'
+  where pc' = case jmpCode of
+                NoJump -> pc + 1
+                UA     -> jumpN
+                UR     -> pc + jumpN
+                CA     -> if cnd then jumpN else pc + 1
+                CR     -> if cnd then pc + jumpN else pc + 1
+                Back   -> undefined -- I don't understand here

@@ -4,6 +4,11 @@ import CLaSH.Prelude hiding(Word)
 import Esprockell
 import qualified Data.List as L
 
+{------------------------------------
+| Test esprockell
+| not synthesizable
+------------------------------------}
+
 
 r7  = 7  :: RegIdx
 r8  = 8  :: RegIdx
@@ -21,7 +26,7 @@ progAdd = [
     Load (RImm 3) r7 
   , Load (RImm 4) r8 
   , Arith Id r7 r8 r9
-  , Debug (DebugReg r9)
+  , Debug (DebugReg r9 3)
   , EndProg
     ]
 
@@ -33,8 +38,8 @@ createImem prog = createImem' prog defaultImm
         pushIm (idx, v) imm = replace idx v imm
         defaultImm = repeat EndProg :: IMem
 
-run :: [ISA] -> Signal (Maybe Word)
+run :: [ISA] -> Signal (Maybe Word, Bool)
 run prog = let imm = createImem prog
              in sprockell imm undefined
-
 samp sampNum prog = mapM_ print $ sampleN sampNum $ run prog
+

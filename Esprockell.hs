@@ -64,8 +64,8 @@ data OpCode = NoOp | Id  | Incr | Decr
             | Add  | Sub | Mul  | Eq | Neq | Gt | Lt | And | Or
             deriving(Eq, Show)
 
-data DebugCode = DebugReg RegIdx -- show value of reg regIdx
-               | DebugMem DAddr  -- show data in memory whose address is addr
+data DebugCode = DebugReg RegIdx Word -- show value of reg regIdx
+               | DebugMem DAddr  Word -- show data in memory whose address is addr
                | NoDebug
                deriving (Eq, Show)
 
@@ -201,13 +201,17 @@ instance Default PState where
                  , pc = 0
                  , sp = sp0 }
 
-debug :: (DMem, Reg) -> DebugCode -> Maybe Word
+debug :: (DMem, Reg) -> DebugCode -> (Maybe Word, Bool)
 debug (mem, regs) debugCode = case debugCode of
-    NoDebug       -> Nothing
-    DebugReg ridx -> regs !? ridx
-    DebugMem addr -> mem  !? addr
+    NoDebug           -> (Nothing, True)
+    DebugReg ridx ref -> fuck ref $ regs !? ridx
+    DebugMem addr ref -> fuck ref $ mem  !? addr
 
-sprockellMealy :: IMem -> PState -> Bit -> (PState, Maybe Word)
+fuck :: Word -> Maybe Word -> (Maybe Word, Bool)
+fuck ref Nothing  = (Nothing, False)
+fuck ref (Just v) = (Just v, ref == v)
+
+sprockellMealy :: IMem -> PState -> Bit -> (PState, (Maybe Word, Bool))
 sprockellMealy prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = pc', sp = sp'}, outp)
    where
      PState{..}   = state

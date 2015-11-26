@@ -87,6 +87,93 @@ progMax = [
     , Jump  Back 0
     ] 
 
+progFibRecr2 :: [ISA]
+progFibRecr2 = [
+    Store (MImm 4) 0
+    , Load  (RAddr 0) r7
+    , Load  (RImm 2)  r8
+    , Arith Add pcreg r8 jmpreg
+    , Jump  UA fibAbsAddr
+    , Debug (DebugReg r8 5)
+
+    , Push jmpreg
+    , Push r7
+    , Push r9 -- use as tmp reg
+    , Load (RImm 2) r9
+    , Arith Lt r7 r9 r9
+    , Jump CA recursionOut
+
+    , Arith Decr r7 r9 r7 
+    , Load (RImm 2) r9
+    , Arith Add pcreg r9 jmpreg
+    , Jump UA fibAbsAddr
+    , Arith Id r8 r9 r9
+
+
+    , Arith Decr r7 r9 r7 
+    , Arith Decr r7 r9 r7 
+    , Load (RImm 2) r9
+    , Arith Add pcreg r9 jmpreg
+    , Jump UA fibAbsAddr
+    , Arith Id r8 r9 r8
+
+    , Jump UR 2
+    , Load (RImm 1) r8
+    , Pop r9
+    , Pop r7
+    , Pop jmpreg
+    , Jump Back 0]
+    where recursionOut = fromIntegral $ L.length progFibRecr2 - 5
+          fibAbsAddr   = 6
+
+-- define recursive function
+progFibRecr :: [ISA]
+progFibRecr = [
+    Store (MImm 4) 0
+
+    , Load  (RAddr 0) r7
+    , Load  (RImm 2) r8
+    , Arith Add pcreg r8 jmpreg
+    , Jump  UA fibAbsAddr
+    , Debug (DebugReg r8 5)
+    , EndProg
+
+    , Load (RImm 2) r8
+    , Arith Lt r7 r8 r8    -- whether input < 2
+    , Jump CA recursionOut -- Conditional Absolute jump
+
+    , Push jmpreg
+    , Push r7
+    , Arith Decr r7 zeroreg r7 -- r7 - 1
+    , Load (RImm 2) r8
+    , Arith Add pcreg r8 jmpreg
+    , Jump UA fibAbsAddr
+    , Pop r7
+    , Pop jmpreg
+    , Arith Id r8 zeroreg r9 -- move r8 to r9
+
+    , Push jmpreg
+    , Push r7
+    , Arith Decr r7 zeroreg r7 -- r7 - 1
+    , Arith Decr r7 zeroreg r7 -- r7 - 1
+    , Load (RImm 2) r8
+    , Arith Add pcreg r8 jmpreg
+    , Jump UA fibAbsAddr
+    , Pop r7
+    , Pop jmpreg
+
+    , Debug (DebugReg r7 0) -- n
+    , Debug (DebugReg r9 0) -- fib (n-1)
+    , Debug (DebugReg r8 0) -- fib (n-2)
+    , Arith Add r8 r9 r8
+    , Debug (DebugReg r8 0) -- fib (n-2)
+    , Jump UR 2
+    , Load (RImm 1) r8
+    , Jump Back 0
+    ] 
+    where fibAbsAddr   = 7
+          recursionOut = fromIntegral $ L.length progFibRecr - 2
+
 -- progFib :: [ISA]
 -- progFib = [
 --     Load (RImm 0) r7 -- calc fib(3)

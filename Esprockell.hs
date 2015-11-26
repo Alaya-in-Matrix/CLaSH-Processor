@@ -2,14 +2,20 @@
 module Esprockell where
 
 import CLaSH.Prelude hiding (Word)
+import qualified Data.List as L
 
 {-------------------------------------------------------------
 | Esprockell: Expanded Simple PROCessor in hasKELL 
 -------------------------------------------------------------}
 
+(!?) :: (Enum i, KnownNat n) => Vec n a -> i -> Maybe a
+vec !? idx 
+  | fromEnum idx < length vec = Just $ vec !! idx
+  | otherwise                 = Nothing
+
 type Word     = Signed 16
 
-type RegSize  = 8
+type RegSize  = 16
 type IMemSize = 128
 type DMemSize = 128
 
@@ -17,7 +23,7 @@ type Reg      = Vec RegSize  Word
 type IMem     = Vec IMemSize ISA
 type DMem     = Vec DMemSize Word
 
-type RegIdx   = Unsigned 3
+type RegIdx   = Unsigned 4
 type IAddr    = Unsigned 7
 type DAddr    = Unsigned 7
 
@@ -25,6 +31,24 @@ type DAddr    = Unsigned 7
 data RegVal = RAddr DAddr  | RImm Word deriving(Eq, Show)
 -- value in data memory
 data MemVal = MAddr RegIdx | MImm Word deriving(Eq, Show)
+
+-- {-------------------------------------------------------------
+-- | some constants
+-- -------------------------------------------------------------}
+zeroreg = 0 :: RegIdx
+regA    = 1 :: RegIdx
+regB    = 2 :: RegIdx
+endreg  = 3 :: RegIdx  -- for FOR-loop
+stepreg = 4 :: RegIdx  -- ibid
+jmpreg  = 5 :: RegIdx  -- for jump instructions
+pcreg   = 6 :: RegIdx  -- pc is added at the end of the regbank => regbank0
+sp0     = 20 :: DAddr
+
+(<~) :: Reg -> (RegIdx, Word) -> Reg
+xs <~ (idx, val) = replace idx val xs
+
+(<~~) :: DMem -> (Bool, DAddr, Word) -> DMem
+mem <~~ (we, addr, val) = if we then replace addr val mem else mem
 
 data LdCode  = NoLoad  | LdImm | LdAddr | LdAlu  deriving(Eq, Show)
 data StCode  = NoStore | StImm | StReg           deriving(Eq, Show)
@@ -52,7 +76,7 @@ data MachCode = MachCode {
     , stCode    :: StCode   -- store code
     , spCode    :: SpCode   -- stack pointer code
     , opCode    :: OpCode   -- arithmetic code
-    , debugCode :: DebugCode
+    , dbCode    :: DebugCode
     , immvalueR :: Word     -- value from immediate to register
     , immvalueS :: Word     -- value from immediate to store
     , fromreg0  :: RegIdx   -- first oprand to compute
@@ -65,22 +89,12 @@ data MachCode = MachCode {
     , jumpN     :: IAddr    -- where to fetch instruction
     } deriving(Eq, Show)
 
-data ISA = Arith OpCode  RegIdx RegIdx RegIdx
-         | Jump  JmpCode IAddr
-         | Load  RegVal  RegIdx
-         | Store MemVal  DAddr
-         | Push  RegIdx -- what for ?
-         | Pop   RegIdx -- what for ?
-         | EndProg
-         | Debug DebugCode
-
-
 instance Default MachCode where
     def = MachCode { ldCode    = NoLoad
                    , stCode    = NoStore
                    , spCode    = None
                    , opCode    = NoOp
-                   , debugCode = NoDebug
+                   , dbCode    = NoDebug
                    , immvalueR = 0
                    , immvalueS = 0
                    , fromreg0  = 0
@@ -92,26 +106,22 @@ instance Default MachCode where
                    , jmpCode   = NoJump
                    , jumpN     = 0
                    }
+
+data ISA = Arith OpCode  RegIdx RegIdx RegIdx
+         | Jump  JmpCode IAddr
+         | Load  RegVal  RegIdx
+         | Store MemVal  DAddr
+         | Push  RegIdx -- what for ?
+         | Pop   RegIdx -- what for ?
+         | Debug DebugCode
+         | EndProg
+         deriving(Eq, Show)
+
+prog :: [ISA]
+prog = [ EndProg ]
+
 -- move reg0 reg0 = Compute Id reg0 whatever reg1
 -- nop = Jump UR 0
-
--- {-------------------------------------------------------------
--- | some constants
--- -------------------------------------------------------------}
-zeroreg = 0 :: RegIdx
-regA    = 1 :: RegIdx
-regB    = 2 :: RegIdx
-endreg  = 3 :: RegIdx  -- for FOR-loop
-stepreg = 4 :: RegIdx  -- ibid
-jmpreg  = 5 :: RegIdx  -- for jump instructions
-pcreg   = 7 :: RegIdx  -- pc is added at the end of the regbank => regbank0
-sp0     = 20 :: DAddr
-
-(<~) :: Reg -> (RegIdx, Word) -> Reg
-xs <~ (idx, val) = replace idx val xs
-
-(<~~) :: DMem -> (Bool, DAddr, Word) -> DMem
-mem <~~ (we, addr, val) = if we then replace addr val mem else mem
 
 decode :: (IAddr, DAddr) -> ISA -> MachCode
 decode (pc, sp) instr = case instr of
@@ -123,8 +133,8 @@ decode (pc, sp) instr = case instr of
     Store (MAddr i) j  -> def {stCode  = StReg,  fromreg0  = i,      toaddr   = j, we = True}
     Push r             -> def {stCode  = StReg,  fromreg0  = r,      toaddr   = sp + 1, spCode = Up, we = True}
     Pop r              -> def {ldCode  = LdAddr, fromaddr  = sp,     toreg    = r,  spCode = Down}
+    Debug debugCode    -> def {dbCode  = debugCode}
     EndProg            -> def
-    Debug _            -> def
 
 alu :: OpCode -> (Word, Word) -> (Word, Bool)
 alu opCode (x, y) = (z, cnd)
@@ -192,8 +202,14 @@ instance Default PState where
                  , pc = 0
                  , sp = sp0 }
 
-sprockell :: IMem -> PState -> Bit -> (PState, Maybe Word)
-sprockell prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = pc', sp = sp'}, outp)
+debug :: (DMem, Reg) -> DebugCode -> Maybe Word
+debug (mem, regs) debugCode = case debugCode of
+    NoDebug       -> Nothing
+    DebugReg ridx -> regs !? ridx
+    DebugMem addr -> mem  !? addr
+
+sprockellMealy :: IMem -> PState -> Bit -> (PState, Maybe Word)
+sprockellMealy prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = pc', sp = sp'}, outp)
    where
      PState{..}   = state
      MachCode{..} = decode (pc, sp) (prog !! pc)
@@ -205,10 +221,40 @@ sprockell prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = p
      dmem'        = store dmem stCode (we, toaddr) (immvalueS, x)
      pc'          = updatePC (jmpCode, cnd) (pc, jumpN, x)
      sp'          = updateSp spCode sp
-     outp         = Nothing
+     outp         = debug (dmem, reg) dbCode
+{------------------------------------- TEST ----------------------------------------------}
+r7  = 7  :: RegIdx
+r8  = 8  :: RegIdx
+r9  = 9  :: RegIdx
+r10 = 10 :: RegIdx
+r11 = 11 :: RegIdx
+r12 = 12 :: RegIdx
+r13 = 13 :: RegIdx
+r14 = 14 :: RegIdx
+r15 = 15 :: RegIdx
+r16 = 16 :: RegIdx
 
-topEntity :: IMem -> Signal Bit -> Signal (Maybe Word)
-topEntity imem = sprockell imem `mealy` def
+prog1 :: [ISA]
+prog1 = [
+    Load (RImm 3) r7 
+  , Load (RImm 4) r8 
+  , Arith Id r7 r8 r9
+  , Debug (DebugReg r9)
+  , EndProg
+    ]
 
-testImem :: IMem
-testImem = undefined
+sprockell imem = sprockellMealy imem `mealy` def
+
+-- L.foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
+-- replace :: (Enum i, KnownNat n) => i -> a -> Vec n a -> Vec n a
+createImem :: [ISA] -> IMem
+createImem prog = createImem' prog defaultImm
+  where createImem' p imm   = L.foldr pushIm imm $ L.zip [0..] p
+        pushIm (idx, v) imm = replace idx v imm
+        defaultImm = repeat EndProg :: IMem
+
+run :: [ISA] -> Signal (Maybe Word)
+run prog = let imm = createImem prog
+             in sprockell imm undefined
+
+samp sampNum prog = mapM_ print $ sampleN sampNum $ run prog

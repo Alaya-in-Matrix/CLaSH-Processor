@@ -48,6 +48,7 @@ xs <~ (idx, val) = replace idx val xs
 
 (<~~) :: DMem -> (Bool, DAddr, Word) -> DMem
 mem <~~ (we, addr, val) = if we then replace addr val mem else mem
+
 data LdCode  = NoLoad  | LdImm | LdAddr | LdAlu  deriving(Eq, Show)
 data StCode  = NoStore | StImm | StReg           deriving(Eq, Show)
 data SpCode  = None    | Up    | Down            deriving(Eq, Show)
@@ -63,18 +64,12 @@ data OpCode = NoOp | Id  | Incr | Decr
             | Add  | Sub | Mul  | Eq | Neq | Gt | Lt | And | Or
             deriving(Eq, Show)
 
-data DebugCode = DebugReg RegIdx Word -- show value of reg regIdx
-               | DebugMem DAddr  Word -- show data in memory whose address is addr
-               | NoDebug
-               deriving (Eq, Show)
-
 -- Internal representation of instruction
 data MachCode = MachCode {
     ldCode      :: LdCode
     , stCode    :: StCode   -- store code
     , spCode    :: SpCode   -- stack pointer code
     , opCode    :: OpCode   -- arithmetic code
-    , dbCode    :: DebugCode
     , immvalueR :: Word     -- value from immediate to register
     , immvalueS :: Word     -- value from immediate to store
     , fromreg0  :: RegIdx   -- first oprand to compute
@@ -92,7 +87,6 @@ instance Default MachCode where
                    , stCode    = NoStore
                    , spCode    = None
                    , opCode    = NoOp
-                   , dbCode    = NoDebug
                    , immvalueR = 0
                    , immvalueS = 0
                    , fromreg0  = 0
@@ -111,12 +105,8 @@ data ISA = Arith OpCode  RegIdx RegIdx RegIdx
          | Store MemVal  DAddr
          | Push  RegIdx -- what for ?
          | Pop   RegIdx -- what for ?
-         | Debug DebugCode
          | EndProg
          deriving(Eq, Show)
-
-prog :: [ISA]
-prog = [ EndProg ]
 
 -- move reg0 reg0 = Compute Id reg0 whatever reg1
 -- nop = Jump UR 0
@@ -131,7 +121,6 @@ decode (pc, sp) instr = case instr of
     Store (MAddr i) a  -> def {stCode  = StReg,  fromreg0  = i,      toaddr   = a, we = True}
     Push r             -> def {stCode  = StReg,  fromreg0  = r,      toaddr   = sp + 1, spCode = Up, we = True}
     Pop r              -> def {ldCode  = LdAddr, fromaddr  = sp,     toreg    = r,  spCode = Down}
-    Debug debugCode    -> def {dbCode  = debugCode}
     EndProg            -> def {jmpCode = UR, jumpN = 0} -- loop here forever
 
 alu :: OpCode -> (Word, Word) -> (Word, Bool)
@@ -154,20 +143,24 @@ alu opCode (x, y) = (z, cnd)
             Not  -> complement x
             NoOp -> 0
 
-load :: Reg -> LdCode -> RegIdx -> (Word, Word, Word) -> Reg
-load regs ldCode toReg (immV, memV, aluV) = regs <~ (toReg, v)
+load :: Reg 
+     -> LdCode 
+     -> RegIdx 
+     -> (Word, Word, Word) 
+     -> Reg
+load regs ldCode toReg (immV, ldBfV, aluV) = regs <~ (toReg, v)
   where v = case ldCode of
-              NoLoad -> 0 -- Why ? -- 是不是默认情况下，toReg是指向一个恒零寄存器？
+              NoLoad -> 0 -- Why ? -- 此时，toReg = zeroreg
               LdImm  -> immV
-              LdAddr -> memV
+              LdAddr -> ldBfV
               LdAlu  -> aluV
-
-store :: DMem -> StCode -> (Bool, DAddr) -> (Word, Word) -> DMem
-store dmem stCode (we, addr) (immV, regV) = dmem <~~ (we, addr, v)
-  where v = case stCode of
-              NoStore -> 0
-              StImm   -> immV
-              StReg   -> regV
+store :: StCode
+      -> (Word, Word)
+      -> Word
+store stCode (immV, regV) = case stCode of
+                              NoStore -> 0
+                              StImm   -> immV
+                              StReg   -> regV
 
 updatePC :: (JmpCode, Bool) -> (IAddr, IAddr, Word) -> IAddr
 updatePC (jmpCode, cnd) (pc, jumpN, jmpRegV) = pc'
@@ -185,44 +178,43 @@ updateSp spCode sp = case spCode of
     Down -> sp - 1
     None -> sp
 
+processorMealy :: PState -> PIn -> (PState, POut)
+processorMealy state (instr, memIn) = (state', out)
+    where
+        state'       = PState {reg = reg', cnd = cnd', pc = pc', sp = sp', ldbuf = ldbuf'}
+        out          = (toaddr, fromaddr, we, z, pc')
+        MachCode{..} = decode (pc, sp) instr
+        PState {..}  = state
+        reg0         = replace pcreg (fromIntegral pc) reg
+        (x, y)       = (reg0 !! fromreg0, reg0 !! fromreg1)
+        ldbuf'       = memIn +>> ldbuf
+        (z, cnd')    = alu opCode (x, y)
+        reg'         = load reg ldCode toreg (immvalueR, last ldbuf', z) -- need add nop manually or by compiler
+        memOut       = store stCode (immvalueS, x)
+        pc'          = updatePC (jmpCode, cnd') (pc, jumpN, reg' !! jmpreg)
+        sp'          = updateSp spCode sp
 
+processor = processorMealy `mealyB` def
+
+-- system :: IMem -> (Signed Word, Signal Word)
+system imem = (memOut, aluOut)
+    where memOut                         = blockRam (replicate d128 0) waddr raddr we aluOut
+          (waddr, raddr, we, aluOut, pc) = processor (instr, memOut)
+          instr                          = asyncRom imem <$> pc
+
+type PIn    = (ISA, Word) -- ^ (Instruction, memData)
+type POut   = (DAddr, DAddr, Bool, Word, IAddr) -- (wAddr, rAddr, wEn, dataOut, pc)
 data PState = PState { reg  :: Reg
-                     , dmem :: DMem
                      , cnd  :: Bool
                      , pc   :: IAddr
                      , sp   :: DAddr
+                     , ldbuf :: Vec MemDelay Word -- load reg buffer
                      } deriving (Eq, Show)
-
+type MemDelay = 1
 instance Default PState where
-    def = PState { reg = repeat 0
-                 , dmem = repeat 0
-                 , cnd = False
-                 , pc = 0
-                 , sp = sp0 }
+    def = PState { reg   = repeat 0
+                 , cnd   = False
+                 , pc    = 0
+                 , ldbuf = repeat 0
+                 , sp    = sp0 }
 
-debug :: (DMem, Reg) -> DebugCode -> (Maybe Word, Bool)
-debug (mem, regs) debugCode = case debugCode of
-                                NoDebug           -> (Nothing, True)
-                                DebugReg ridx ref -> validate ref $ regs !? ridx
-                                DebugMem addr ref -> validate ref $ mem  !? addr
-                                where validate ref Nothing  = (Nothing, False)
-                                      validate ref (Just v) = (Just v, ref == v)
-
-sprockellMealy :: IMem -> PState -> Bit -> (PState, (Maybe Word, Bool))
-sprockellMealy prog state inp = (PState {dmem = dmem', reg = reg', cnd = cnd', pc = pc', sp = sp'}, outp)
-   where
-     PState{..}   = state
-     MachCode{..} = decode (pc, sp) (prog !! pc)
-     reg0         = replace pcreg (fromIntegral pc) reg
-     (x, y)       = (reg0 !! fromreg0, reg0 !! fromreg1)
-     mval         = dmem !! fromaddr
-     (z, cnd')    = alu opCode (x, y)
-     reg'         = load reg ldCode toreg (immvalueR, mval, z)
-     dmem'        = store dmem stCode (we, toaddr) (immvalueS, x)
-     pc'          = updatePC (jmpCode, cnd) (pc, jumpN, x)
-     sp'          = updateSp spCode sp
-     outp         = debug (dmem, reg) dbCode
-
-sprockell imem = sprockellMealy imem `mealy` def
-
-topEntity = sprockell 

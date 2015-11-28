@@ -129,6 +129,33 @@ progFibRecr = [
     ] 
     where (fibAbsAddr, recursionOut) = (7, fromIntegral $ L.length progFibRecr - 2)
 
+progFibIter = [
+    Store (MImm 7) 0 -- mem[0] := 7
+
+    , Load (RAddr 0) r7 -- r7 := mem[0]
+    , Load (RImm 2)  r8 -- r8 := 2
+    , Arith Add pcreg r8 jmpreg -- jmpreg := pcreg + r8
+    , Jump UA fibIterAddr -- call fibIter
+    , Debug (DebugReg r8 21) -- print result
+    , EndProg
+
+    , Load (RImm 1) r8 -- r8 := 1
+    , Load (RImm 0) r9 -- r9 := 1
+    , Arith Eq r7 zeroreg r10 -- test
+    , Jump CA fibIterRet
+    , Arith Decr r7 r7 r7 -- r7 -= 1
+    , Arith Id r8 zeroreg r10 -- r10 := r8
+    , Arith Add r8 r9 r8      -- r8  := r8 + r9
+    , Arith Id r10 zeroreg r9 -- r9  := 10
+    , Jump UR fibIterTestZero
+
+    , Jump Back 0
+    ] 
+    where fibIterAddr     = 7
+          fibIterRet      = fromIntegral $ L.length progFibIter - 1
+          fibIterTestZero = (-6)
+
+
 -- L.foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
 -- replace :: (Enum i, KnownNat n) => i -> a -> Vec n a -> Vec n a
 createImem :: [ISA] -> IMem

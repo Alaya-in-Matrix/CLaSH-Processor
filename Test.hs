@@ -176,6 +176,35 @@ progFacIter = [
     where facIterRet  = fromIntegral $ L.length progFacIter - 1
           facIterAddr = 7
 
+progFacRecr = [
+    Store (MImm input) 0
+    , Load  (RAddr 0) r7
+    , Load  (RImm  2) r8
+    , Arith Add       pcreg r8 jmpreg
+    , Jump  UA        facRecrAddr
+    , Debug (DebugReg r8 validation)
+    , EndProg
+
+    , Arith Eq r7 zeroreg r8
+    , Jump CA facRecrRet
+
+    , Push jmpreg
+    , Push r7
+    , Load (RImm 2) r8
+    , Arith Decr r7 r7 r7
+    , Arith Add pcreg r8 jmpreg
+    , Jump UA facRecrAddr
+    , Pop  r7
+    , Pop  jmpreg
+    , Arith Mul r7 r8 r8
+
+    , Jump Back 0
+    ]
+    where facRecrAddr = 7
+          facRecrRet  = fromIntegral $ L.length progFacRecr - 1
+          input       = 7
+          validation  = product [1..input]
+
 -- L.foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
 -- replace :: (Enum i, KnownNat n) => i -> a -> Vec n a -> Vec n a
 createImem :: [ISA] -> IMem

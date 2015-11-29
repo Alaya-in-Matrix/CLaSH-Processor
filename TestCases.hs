@@ -16,36 +16,23 @@ r14 = 14 :: RegIdx
 r15 = 15 :: RegIdx
 r16 = 16 :: RegIdx
 
-progStore :: [Instruction]
-progStore = [
-    Arith Nop 0 0 0
-    , Load (RImm 7) r7
-    , Store (MReg r7) 0
-    , EndProg
-    ]
-
 progAdd :: [Instruction]
 progAdd = [
   Load (RImm 3) r7 
   , Load (RImm 9) r8 
   , Arith Add r7 r8 r9
   , Store (MReg r9) 0
-  , Jump UR (-1)
   , EndProg
     ]
 
--- progStack :: [ISA]
+-- progStack :: [Instruction]
 -- progStack = [
 --     Load (RImm 3) r7
 --     , Push r7
 --     , Arith Incr r7 r7 r7
 --     , Push r7
---     , Debug (DebugMem (sp0+1) 3)
---     , Debug (DebugMem (sp0+2) 4)
 --     , Pop r8
---     , Debug (DebugReg r8 4)
 --     , Pop r8
---     , Debug (DebugReg r8 3)
 --     , EndProg
 --     ]
 

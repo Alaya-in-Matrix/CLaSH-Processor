@@ -27,4 +27,10 @@ run prog = let progRom = createIrom prog
             in sys progRom
 
 fuck prog sampNum = sampleN sampNum $ run prog
-suck prog sampNum = mapM_ print $ fuck prog sampNum
+suck prog sampNum = mapM_ print $ takeUntil ((== EndProg) . fst) $ fuck prog sampNum
+
+takeUntil :: (a -> Bool) -> [a] -> [a]
+takeUntil _ [] = []
+takeUntil pred (x:xs) 
+    | pred x = [x]
+    | otherwise = x : takeUntil pred xs

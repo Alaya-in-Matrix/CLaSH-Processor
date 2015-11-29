@@ -26,7 +26,7 @@ run :: [Instruction] -> Signal (Instruction, Word)
 run prog = let progRom = createIrom prog
             in sys progRom
 
-fuck prog sampNum = sampleN sampNum $ run prog
+fuck prog sampNum = L.drop 1 $ sampleN sampNum $ run prog
 suck prog sampNum = mapM_ print $ takeUntil ((== EndProg) . fst) $ fuck prog sampNum
 
 takeUntil :: (a -> Bool) -> [a] -> [a]

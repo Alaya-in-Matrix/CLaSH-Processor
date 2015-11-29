@@ -25,16 +25,28 @@ progAdd = [
   , EndProg
     ]
 
--- progStack :: [Instruction]
--- progStack = [
---     Load (RImm 3) r7
---     , Push r7
---     , Arith Incr r7 r7 r7
---     , Push r7
---     , Pop r8
---     , Pop r8
---     , EndProg
---     ]
+-- 为何store后不能马上load?
+progLdSt :: [Instruction]
+progLdSt = [
+    Store (MImm 13) 0
+    , Load (RAddr 0) r9
+    , EndProg
+    ]
+
+progStack :: [Instruction]
+progStack = [
+    Load (RImm 3) r7
+    , Push r7
+    , Arith Incr r7 r7 r7
+    , Push r7
+    , Arith Nop 0 0 0
+
+    , Pop r8
+    , Pop r9
+    , Pop r10
+    , Arith Nop 0 0 0
+    , EndProg
+    ]
 
 -- progMov :: [ISA]
 -- progMov = [

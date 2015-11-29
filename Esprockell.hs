@@ -119,13 +119,6 @@ decode sp instr = case instr of
     EndProg            -> def {jmpCode = UR, jmpNum = 0} -- forever loop here
 
 
-traceAlu op x y ret = "\nop: " +~+ show op 
-                               +~+ ", x = " 
-                               +~+ show x
-                               +~+ ", y = "
-                               +~+ show y
-                               +~+ ", ret = "
-                               +~+ show ret
 alu :: OpCode       -- operator
     -> (Word, Word) -- to operands
     -> (Word, Bool) -- result and Conditional test resutl
@@ -160,7 +153,8 @@ load ldCode toReg (imm, aluOut) regs = regs <~ (toReg, v)
     where v = case ldCode of
                 NoLoad -> 0
                 LdImm  -> imm
-                LdAlu  -> aluOut -- memory-load is delayed
+                LdAlu  -> aluOut 
+                LdAddr -> regs !! toReg -- memory-load is delayed
 
 
 store :: StCode 
@@ -204,8 +198,9 @@ instance Default PState where
                  , ldBuf = repeat 0
                  , sp    = sp0 }
 
+traceEspro i s s' o = show i +~+ "\n" +~+ show s +~+ "\n" +~+ show s' +~+ "\n" +~+ show o +~+ "\n"
 esprockellMealy :: PState -> PIn -> (PState, POut)
-esprockellMealy state (instr, memData) = show (instr, state') `trace` (state', out)
+esprockellMealy state (instr, memData) = traceEspro instr state state' out `trace` (state', out)
     where 
         MachCode{..}   = decode sp instr
         PState{..}     = state
@@ -213,7 +208,10 @@ esprockellMealy state (instr, memData) = show (instr, state') `trace` (state', o
         state' = PState { reg = reg', cnd = cnd', pc = pc', sp = sp', ldBuf = ldBuf'}
         out    = (toAddr, fromAddr, we, toMem, pc')
         (x, y) = (reg !! fromReg0, reg !! fromReg1)
-        ldBuf' = if ldCode == LdAddr then toReg +>> ldBuf else ldBuf
+        ldBuf' = ldReg +>> ldBuf
+        ldReg 
+          | ldCode == LdAddr = toReg
+          | otherwise        = 0
         reg0   = load ldCode toReg (ldImm, aluOut) $ reg <~ (last ldBuf, memData)
         reg'   = reg0 <~ (zeroreg, 0) <~ (pcreg, fromIntegral pc)
         toMem  = store stCode (stImm, x)
@@ -224,7 +222,6 @@ esprockell :: Signal (Instruction, Word)
            -> Signal (DAddr, DAddr, Bool, Word, PC)
 esprockell = esprockellMealy `mealy` def
 
-dataRam = blockRam (repeat 37 :: Mem)
 
 sys :: IRom
     -> Signal (Instruction, Word)
@@ -233,4 +230,5 @@ sys prog = let (wAddr, rAddr, we, wData, pc) = unbundle $ esprockell pIn
                ramOut                        = dataRam wAddr rAddr we wData
                romOut                        = (prog !!) <$> (pc-1) 
                nop                           = Arith Nop 0 0 0
-            in bundle (romOut, wData) -- instruction, data write to mem, data read from mem
+               dataRam = blockRam (repeat maxBound :: Mem)
+            in bundle (romOut, ramOut) -- instruction, data write to mem, data read from mem

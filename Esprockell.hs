@@ -2,13 +2,15 @@
 module Esprockell where
 
 import CLaSH.Prelude hiding(Word)
+import Debug.Trace
+import qualified Data.List as L
 
 type Word     = Signed 16 -- set data width to 16
 type RegSize  = 32        -- we have 16 registers
 type IMemSize = 128
 type DMemSize = 128
 type RegIdx   = Unsigned 5
-type PC       = Unsigned 7
+type PC       = Signed 8 -- PC 可能会是负数，比如 Jump UR (-1)
 type DAddr    = Unsigned 7
 
 type Reg  = Vec RegSize  Word
@@ -117,7 +119,7 @@ decode sp instr = case instr of
 alu :: OpCode       -- operator
     -> (Word, Word) -- to operands
     -> (Word, Bool) -- result and Conditional test resutl
-alu op (x, y) = (opRet, cnd)
+alu op (x, y) =  testAlu op opRet `trace` (opRet, cnd)
     where (opRet, cnd) = (app op x y, testBit opRet 0)
           app op x y   = case op of
             Nop  -> 0 -- 此时，toreg应该是zeroreg
@@ -208,17 +210,17 @@ esprockellMealy state (instr, memData) = (state', out)
         pc'    = updatePC (jmpCode, cnd') (pc, jmpNum, reg' !! jmpreg)
         sp'    = updateSp spCode sp
 
-esprockell :: ( Signal Instruction, Signal Word )
-           -> ( Signal DAddr -- wAddr
-              , Signal DAddr -- rAddr
-              , Signal Bool  -- wEn
-              , Signal Word  -- data
-              , Signal PC)   -- PC
-esprockell = esprockellMealy `mealyB` def
+esprockell :: Signal (Instruction, Word) 
+           -> Signal (DAddr, DAddr, Bool, Word, PC)
+esprockell = esprockellMealy `mealy` def
 
-sys :: Vec IMemSize Instruction     -- instruction rom content
-    -> Signal Word                  -- data to be stored into memory
-sys prog = toMem
-  where memOut = blockRam (repeat 0 :: Mem) waddr raddr we toMem
-        instr  = asyncRom prog <$> pc
-        (waddr, raddr, we, toMem, pc) = esprockell (instr, memOut)
+dataRam = blockRam (repeat 0 :: Mem)
+
+sys :: IRom
+    -> Signal (Instruction, Word)
+sys prog = let (wAddr, rAddr, we, wData, pc) = unbundle $ esprockell pIn
+               pIn                           = register (nop, 0) $ bundle (romOut, ramOut)
+               ramOut                        = dataRam wAddr rAddr we wData
+               romOut                        = (prog !!) <$> pc 
+               nop                           = Arith Nop 0 0 0
+            in bundle (romOut, wData) -- instruction, data write to mem, data read from mem

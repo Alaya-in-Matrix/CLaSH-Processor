@@ -26,10 +26,9 @@ progStore = [
 
 progAdd :: [Instruction]
 progAdd = [
-    Arith Nop 0 0 0
-  , Load (RImm 3) r7 
+  Load (RImm 3) r7 
   , Load (RImm 9) r8 
-  , Arith Id r7 r8 r9
+  , Arith Add r7 r8 r9
   , Store (MReg r9) 0
   , Jump UR (-1)
   , EndProg

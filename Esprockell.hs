@@ -1,220 +1,224 @@
 {-# language RecordWildCards #-}
 module Esprockell where
 
-import CLaSH.Prelude hiding (Word)
+import CLaSH.Prelude hiding(Word)
 
-{-------------------------------------------------------------
-| Esprockell: Expanded Simple PROCessor in hasKELL 
--------------------------------------------------------------}
-
-(!?) :: (Enum i, KnownNat n) => Vec n a -> i -> Maybe a
-vec !? idx 
-  | fromEnum idx < length vec = Just $ vec !! idx
-  | otherwise                 = Nothing
-
-type Word     = Signed 16
-
-type RegSize  = 16
+type Word     = Signed 16 -- set data width to 16
+type RegSize  = 32        -- we have 16 registers
 type IMemSize = 128
 type DMemSize = 128
-
-type Reg      = Vec RegSize  Word
-type IMem     = Vec IMemSize ISA
-type DMem     = Vec DMemSize Word
-
-type RegIdx   = Unsigned 4
-type IAddr    = Unsigned 7
+type RegIdx   = Unsigned 5
+type PC       = Unsigned 7
 type DAddr    = Unsigned 7
 
--- value in register
-data RegVal = RAddr DAddr  | RImm Word deriving(Eq, Show)
--- value in data memory
-data MemVal = MAddr RegIdx | MImm Word deriving(Eq, Show)
+type Reg  = Vec RegSize  Word
+type Mem  = Vec DMemSize Word
+type IRom = Vec IMemSize Instruction
 
--- {-------------------------------------------------------------
--- | some constants
--- -------------------------------------------------------------}
-zeroreg = 0 :: RegIdx
-regA    = 1 :: RegIdx
-regB    = 2 :: RegIdx
-endreg  = 3 :: RegIdx  -- for FOR-loop
-stepreg = 4 :: RegIdx  -- ibid
-jmpreg  = 5 :: RegIdx  -- for jump instructions
-pcreg   = 6 :: RegIdx  -- pc is added at the end of the regbank => regbank0
-sp0     = 20 :: DAddr
 
-(<~) :: Reg -> (RegIdx, Word) -> Reg
-xs <~ (idx, val) = replace idx val xs
 
-(<~~) :: DMem -> (Bool, DAddr, Word) -> DMem
-mem <~~ (we, addr, val) = if we then replace addr val mem else mem
+-- some special registers
+-- the special usage of these registers is just "should-be"
+-- user is still able to use these registers as normal registers, but that is highly unrecommended
+zeroreg = 0  :: RegIdx -- constant zero
+jmpreg  = 1  :: RegIdx -- store the return addess when calling a function, usally use "pcreg + 2"
+pcreg   = 2  :: RegIdx -- store the current PC
 
-data LdCode  = NoLoad  | LdImm | LdAddr | LdAlu  deriving(Eq, Show)
-data StCode  = NoStore | StImm | StReg           deriving(Eq, Show)
-data SpCode  = None    | Up    | Down            deriving(Eq, Show)
-data JmpCode = NoJump  -- No jump
-             | UA      -- UnConditional Absolute
-             | UR      -- UnConditional Relative
-             | CA      -- Conditional   Absolute
-             | CR      -- Conditional   Relative
-             | Back    -- Back from subroutine
+sp0     = 20 :: DAddr -- stack pointer
+
+regs <~ (idx, val) = replace idx val regs -- no bound-violation check
+
+vec !? idx  | fromEnum idx < length vec = Just $ vec !! idx
+            | otherwise                 = Nothing
+
+data Instruction = Arith OpCode    RegIdx RegIdx RegIdx
+                 | Jump  JmpCode   PC                 
+                 | Load  LoadFrom  RegIdx
+                 | Store StoreFrom DAddr
+                 | Push  RegIdx
+                 | Pop   RegIdx
+                 | EndProg
+                 deriving(Eq, Show)
+
+data OpCode  = Nop | Id  | Incr | Decr 
+             | Neg | Not
+             | Add | Sub | Mul  | Eq | Ne | Lt | Gt | Le | Ge 
+             | And | Or  | Xor
              deriving(Eq, Show)
-data OpCode = NoOp | Id  | Incr | Decr
-            | Neg  | Not
-            | Add  | Sub | Mul  | Eq | Neq | Gt | Lt | And | Or
-            deriving(Eq, Show)
+data JmpCode = NoJmp -- No jump
+             | UA    -- UnConditional Absolute jump
+             | UR    -- UnConditional Relative jump
+             | CA    -- Conditional   Absolute jump
+             | CR    -- Conditional   Relative jump
+             | Back  -- return from function
+             deriving(Eq, Show)
+-- where does the data to load into register come from, from memory or use immediate number
+data LoadFrom = RAddr DAddr 
+              | RImm Word
+              deriving(Eq, Show)
 
--- Internal representation of instruction
+-- where dose the data to store in memory come from, from register or use immediate number
+data StoreFrom = MReg RegIdx
+               | MImm Word
+               deriving(Eq, Show)
+
+
+data LdCode   = NoLoad  | LdImm | LdAddr | LdAlu  deriving(Eq, Show)
+data StCode   = NoStore | StImm | StReg           deriving(Eq, Show)
+data SpCode   = None    | Up    | Down            deriving(Eq, Show)
 data MachCode = MachCode {
-    ldCode      :: LdCode
-    , stCode    :: StCode   -- store code
-    , spCode    :: SpCode   -- stack pointer code
-    , opCode    :: OpCode   -- arithmetic code
-    , immvalueR :: Word     -- value from immediate to register
-    , immvalueS :: Word     -- value from immediate to store
-    , fromreg0  :: RegIdx   -- first oprand to compute
-    , fromreg1  :: RegIdx   -- second oprand to compute
-    , fromaddr  :: DAddr
-    , toreg     :: RegIdx   
-    , toaddr    :: DAddr
-    , we        :: Bool     -- Write Enable
-    , jmpCode   :: JmpCode  -- where to jump
-    , jumpN     :: IAddr    -- where to fetch instruction
+    ldCode     :: LdCode
+    , stCode   :: StCode
+    , opCode   :: OpCode
+    , jmpCode  :: JmpCode
+    , spCode   :: SpCode
+    , ldImm    :: Word
+    , stImm    :: Word
+    , fromReg0 :: RegIdx -- oprand 0
+    , fromReg1 :: RegIdx -- oprand 1
+    , toReg    :: RegIdx -- write back register
+    , toAddr   :: DAddr  -- write address
+    , fromAddr :: DAddr  -- read address
+    , we       :: Bool
+    , jmpNum   :: PC
     } deriving(Eq, Show)
 
 instance Default MachCode where
-    def = MachCode { ldCode    = NoLoad
-                   , stCode    = NoStore
-                   , spCode    = None
-                   , opCode    = NoOp
-                   , immvalueR = 0
-                   , immvalueS = 0
-                   , fromreg0  = 0
-                   , fromreg1  = 0
-                   , fromaddr  = 0
-                   , toreg     = 0
-                   , toaddr    = 0
-                   , we        = False
-                   , jmpCode   = NoJump
-                   , jumpN     = 0
+    def = MachCode { ldCode   = NoLoad
+                   , stCode   = NoStore
+                   , opCode   = Nop
+                   , jmpCode  = NoJmp
+                   , spCode   = None
+                   , ldImm    = 0
+                   , stImm    = 0
+                   , fromReg0 = zeroreg
+                   , fromReg1 = zeroreg
+                   , toReg    = zeroreg
+                   , toAddr   = 0
+                   , fromAddr = 0
+                   , we       = False
+                   , jmpNum  = 0
                    }
 
-data ISA = Arith OpCode  RegIdx RegIdx RegIdx
-         | Jump  JmpCode IAddr
-         | Load  RegVal  RegIdx
-         | Store MemVal  DAddr
-         | Push  RegIdx -- what for ?
-         | Pop   RegIdx -- what for ?
-         | EndProg
-         deriving(Eq, Show)
+decode :: DAddr         -- ^ stack pointer
+       -> Instruction   -- ^ current instruction
+       -> MachCode      -- ^ target machine code
+decode sp instr = case instr of
+    Arith op r0 r1 r2  -> def {ldCode = LdAlu, opCode = op, fromReg0 = r0, fromReg1 = r1, toReg = r2}
+    Jump  jType jAddr  -> def {jmpCode = jType, jmpNum = jAddr}
+    Load (RImm n) rid  -> def {ldCode = LdImm, ldImm = n, toReg = rid}
+    Load (RAddr a) rid -> def {ldCode = LdAddr, fromAddr = a, toReg = rid}
+    Store (MImm n) a   -> def {stCode = StImm, stImm = n, toAddr = a, we = True}
+    Store (MReg r) a   -> def {stCode = StReg, fromReg0 = r, toAddr = a, we = True}
+    Push r             -> def {stCode = StReg, fromReg0 = r, toAddr = sp + 1, spCode = Up, we = True}
+    Pop r              -> def {ldCode = LdAddr, fromAddr = sp, toReg = r, spCode = Down}
+    EndProg            -> def {jmpCode = UR, jmpNum = 0} -- forever loop here
 
--- move reg0 reg0 = Compute Id reg0 whatever reg1
--- nop = Jump UR 0
-
-decode :: (IAddr, DAddr) -> ISA -> MachCode
-decode (pc, sp) instr = case instr of
-    Arith op r0 r1 r2  -> def {ldCode  = LdAlu,  opCode    = op,     fromreg0 = r0, fromreg1 = r1, toreg = r2}
-    Jump  jc jn        -> def {jmpCode = jc,     fromreg0  = jmpreg, jumpN    = jn} 
-    Load  (RImm  n) r  -> def {ldCode  = LdImm,  immvalueR = n,      toreg    = r}  
-    Load  (RAddr a) r  -> def {ldCode  = LdAddr, fromaddr  = a,      toreg    = r}  
-    Store (MImm  n) a  -> def {stCode  = StImm,  immvalueS = n,      toaddr   = a, we = True}
-    Store (MAddr i) a  -> def {stCode  = StReg,  fromreg0  = i,      toaddr   = a, we = True}
-    Push r             -> def {stCode  = StReg,  fromreg0  = r,      toaddr   = sp + 1, spCode = Up, we = True}
-    Pop r              -> def {ldCode  = LdAddr, fromaddr  = sp,     toreg    = r,  spCode = Down}
-    EndProg            -> def {jmpCode = UR, jumpN = 0} -- loop here forever
-
-alu :: OpCode -> (Word, Word) -> (Word, Bool)
-alu opCode (x, y) = (z, cnd)
-  where (z, cnd) = (app opCode x y, testBit z 0)
-        app opCode x y = case opCode of
-            Id -> x
+alu :: OpCode       -- operator
+    -> (Word, Word) -- to operands
+    -> (Word, Bool) -- result and Conditional test resutl
+alu op (x, y) = (opRet, cnd)
+    where (opRet, cnd) = (app op x y, testBit opRet 0)
+          app op x y   = case op of
+            Nop  -> 0 -- 此时，toreg应该是zeroreg
+            Id   -> x
             Incr -> x + 1
             Decr -> x - 1
             Neg  -> negate x
+            Not  -> complement x
             Add  -> x + y
             Sub  -> x - y
             Mul  -> x * y
             Eq   -> if x == y then 1 else 0
-            Neq  -> if x /= y then 1 else 0
-            Gt   -> if x >  y then 1 else 0
-            Lt   -> if x <  y then 1 else 0
-            And  -> x .&. y
+            Ne   -> if x /= y then 1 else 0
+            Gt   -> if x > y  then 1 else 0
+            Lt   -> if x < y  then 1 else 0
+            Le   -> if x <= y then 1 else 0
+            Ge   -> if x >= y then 1 else 0
+            And  -> x .&. y 
             Or   -> x .|. y
-            Not  -> complement x
-            NoOp -> 0
+            Xor  -> x `xor` y
 
-load :: Reg 
-     -> LdCode 
+load :: LdCode 
      -> RegIdx 
-     -> (Word, Word, Word) 
+     -> (Word, Word)  -- (immediate-number, aluOut)
      -> Reg
-load regs ldCode toReg (immV, ldBfV, aluV) = regs <~ (toReg, v)
-  where v = case ldCode of
-              NoLoad -> 0 -- Why ? -- 此时，toReg = zeroreg
-              LdImm  -> immV
-              LdAddr -> ldBfV
-              LdAlu  -> aluV
-store :: StCode
-      -> (Word, Word)
-      -> Word
-store stCode (immV, regV) = case stCode of
-                              NoStore -> 0
-                              StImm   -> immV
-                              StReg   -> regV
+     -> Reg
+load ldCode toReg (imm, aluOut) regs = regs <~ (toReg, v)
+    where v = case ldCode of
+                NoLoad -> 0
+                LdImm  -> imm
+                LdAlu  -> aluOut -- memory-load is delayed
 
-updatePC :: (JmpCode, Bool) -> (IAddr, IAddr, Word) -> IAddr
-updatePC (jmpCode, cnd) (pc, jumpN, jmpRegV) = pc'
-  where pc' = case jmpCode of
-                NoJump -> pc + 1
-                UA     -> jumpN
-                UR     -> pc + jumpN
-                CA     -> if cnd then jumpN else pc + 1
-                CR     -> if cnd then pc + jumpN else pc + 1
-                Back   -> fromIntegral jmpRegV -- return value should has been written into jmpreg
+
+store :: StCode 
+      -> (Word, Word) -- (immediate-number, reg-number)
+      -> Word
+store stCode (imm, regData) = case stCode of
+                                NoStore -> 0    -- 此时, we == False
+                                StImm   -> imm
+                                StReg   -> regData
+
+updatePC :: (JmpCode, Bool) -- (jump code, cnd)
+         -> (PC, PC, Word)  -- (current-pc, jump-addr, jmpreg)
+         -> PC
+updatePC (jmpCode, cnd) (pc, jmpNum, jumpRegV) = case jmpCode of
+   NoJmp -> pc + 1
+   UA    -> jmpNum
+   UR    -> pc + jmpNum
+   CA    -> if cnd then jmpNum else pc + 1
+   CR    -> if cnd then pc + jmpNum else pc + 1
+   Back  -> fromIntegral jumpRegV
 
 updateSp :: SpCode -> DAddr -> DAddr
-updateSp spCode sp = case spCode of
-    Up   -> sp + 1
-    Down -> sp - 1
-    None -> sp
+updateSp None sp = sp
+updateSp Up   sp = sp + 1
+updateSp Down sp = sp - 1
 
-processorMealy :: PState -> PIn -> (PState, POut)
-processorMealy state (instr, memIn) = (state', out)
-    where
-        state'       = PState {reg = reg', cnd = cnd', pc = pc', sp = sp', ldbuf = ldbuf'}
-        out          = (toaddr, fromaddr, we, z, pc')
-        MachCode{..} = decode (pc, sp) instr
-        PState {..}  = state
-        reg0         = replace pcreg (fromIntegral pc) reg
-        (x, y)       = (reg0 !! fromreg0, reg0 !! fromreg1)
-        ldbuf'       = memIn +>> ldbuf
-        (z, cnd')    = alu opCode (x, y)
-        reg'         = load reg ldCode toreg (immvalueR, last ldbuf', z) -- need add nop manually or by compiler
-        memOut       = store stCode (immvalueS, x)
-        pc'          = updatePC (jmpCode, cnd') (pc, jumpN, reg' !! jmpreg)
-        sp'          = updateSp spCode sp
+type PIn       = (Instruction, Word) -- instruction and data from memory
+type POut      = (DAddr, DAddr, Bool, Word, PC) -- write addr, read addr, write enable, data out, PC
+type LoadDelay = 1
+data PState = PState { reg   :: Reg
+                     , cnd   :: Bool
+                     , pc    :: PC
+                     , sp    :: DAddr
+                     , ldBuf :: Vec LoadDelay RegIdx
+                     } deriving(Eq, Show)
 
-processor = processorMealy `mealyB` def
-
--- system :: IMem -> (Signed Word, Signal Word)
-system imem = (memOut, aluOut)
-    where memOut                         = blockRam (replicate d128 0) waddr raddr we aluOut
-          (waddr, raddr, we, aluOut, pc) = processor (instr, memOut)
-          instr                          = asyncRom imem <$> pc
-
-type PIn    = (ISA, Word) -- ^ (Instruction, memData)
-type POut   = (DAddr, DAddr, Bool, Word, IAddr) -- (wAddr, rAddr, wEn, dataOut, pc)
-data PState = PState { reg  :: Reg
-                     , cnd  :: Bool
-                     , pc   :: IAddr
-                     , sp   :: DAddr
-                     , ldbuf :: Vec MemDelay Word -- load reg buffer
-                     } deriving (Eq, Show)
-type MemDelay = 1
 instance Default PState where
     def = PState { reg   = repeat 0
                  , cnd   = False
                  , pc    = 0
-                 , ldbuf = repeat 0
+                 , ldBuf = repeat 0
                  , sp    = sp0 }
 
+esprockellMealy :: PState -> PIn -> (PState, POut)
+esprockellMealy state (instr, memData) = (state', out)
+    where 
+        MachCode{..}   = decode sp instr
+        PState{..}     = state
+        (aluOut, cnd') = alu opCode (x, y)
+        state' = PState { reg = reg', cnd = cnd', pc = pc', sp = sp', ldBuf = ldBuf'}
+        out    = (toAddr, fromAddr, we, toMem, pc')
+        (x, y) = (reg !! fromReg0, reg !! fromReg1)
+        ldBuf' = toReg +>> ldBuf
+        reg0   = load ldCode toReg (ldImm, aluOut) $ reg <~ (last ldBuf, memData)
+        reg'   = reg0 <~ (zeroreg, 0) <~ (pcreg, fromIntegral pc)
+        toMem  = store stCode (stImm, x)
+        pc'    = updatePC (jmpCode, cnd') (pc, jmpNum, reg' !! jmpreg)
+        sp'    = updateSp spCode sp
+
+esprockell :: ( Signal Instruction, Signal Word )
+           -> ( Signal DAddr -- wAddr
+              , Signal DAddr -- rAddr
+              , Signal Bool  -- wEn
+              , Signal Word  -- data
+              , Signal PC)   -- PC
+esprockell = esprockellMealy `mealyB` def
+
+sys :: Vec IMemSize Instruction     -- instruction rom content
+    -> Signal Word                  -- data to be stored into memory
+sys prog = toMem
+  where memOut = blockRam (repeat 0 :: Mem) waddr raddr we toMem
+        instr  = asyncRom prog <$> pc
+        (waddr, raddr, we, toMem, pc) = esprockell (instr, memOut)

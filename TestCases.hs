@@ -59,7 +59,6 @@ progStack = [
 
     , Pop r8 -- r8 == 4
     , Pop r9 -- r9 == 3
-    , Arith Nop 0 0 0
     , Arith Add r7 r8 r8 -- r8 == 8, r8 is ready, r9 is not ready
     , Arith Add r8 r9 r9 -- r9 == 8 + 3 == 11
     , Push r9

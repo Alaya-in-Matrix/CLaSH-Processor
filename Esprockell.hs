@@ -206,7 +206,7 @@ instance Default PState where
 traceEspro i s s' o = show i +~+ "\n" +~+ show s +~+ "\n" +~+ show s' +~+ "\n" +~+ show o +~+ "\n"
 
 esprockellMealy :: PState -> PIn -> (PState, POut)
-esprockellMealy state (instr, memData) = (state', out)
+esprockellMealy state (instr, memData) = traceEspro instr state state' out `trace` (state', out)
     where 
         MachCode{..}   = decode sp instr
         PState{..}     = state
@@ -219,7 +219,7 @@ esprockellMealy state (instr, memData) = (state', out)
           | ldCode == LdAddr = toReg
           | otherwise        = 0
         reg0   = load ldCode toReg (ldImm, aluOut) $ reg <~ (last ldBuf, memData)
-        reg'   = reg0 <~ (zeroreg, 0) <~ (pcreg, fromIntegral pc)
+        reg'   = reg0 <~ (zeroreg, 0) <~ (pcreg, fromIntegral pc')
         toMem  = store stCode (stImm, x)
         pc'    = updatePC (jmpCode, cnd') (pc, jmpNum, reg' !! jmpreg)
         sp'    = updateSp spCode sp

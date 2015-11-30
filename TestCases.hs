@@ -81,10 +81,9 @@ progJump = [
     , Load (RImm 2) r8 -- r8 := 2
     , Load (RImm 2) r9 -- r9 := 2
     , Arith Add pcreg r9 jmpreg
-    , Jump UR 5
+    , Jump UR 4
     , Store (MReg r9) 0
     , Load (RAddr 0) r10
-    , Arith Nop 0 0 0
     , EndProg
 
     , Arith Add r7 r8 r9 -- r9 := 1+2= 3

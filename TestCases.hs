@@ -50,20 +50,21 @@ progLdSt2 = [
     , EndProg
     ]
 
--- progStack :: [Instruction]
--- progStack = [
---     Load (RImm 3) r7
---     , Push r7
---     , Arith Incr r7 r7 r7
---     , Push r7
---     , Arith Nop 0 0 0
+progStack :: [Instruction]
+progStack = [
+    Load (RImm 3) r7
+    , Push r7
+    , Arith Incr r7 r7 r7
+    , Push r7
 
---     , Pop r8
---     , Pop r9
---     , Pop r10
---     , Arith Nop 0 0 0
---     , EndProg
---     ]
+    , Pop r8 -- r8 == 4
+    , Pop r9 -- r9 == 3
+    , Arith Nop 0 0 0
+    , Arith Add r7 r8 r8 -- r8 == 8, r8 is ready, r9 is not ready
+    , Arith Add r8 r9 r9 -- r9 == 8 + 3 == 11
+    , Push r9
+    , EndProg
+    ]
 
 -- progMov :: [ISA]
 -- progMov = [

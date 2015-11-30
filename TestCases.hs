@@ -108,47 +108,50 @@ progMax = [
     , Jump  Back 0
     ] 
 
--- -- define recursive fib function
--- progFibRecr :: [ISA]
--- progFibRecr = [
---     Store (MImm 7) 0
---     , Load  (RAddr 0) r7
---     , Load  (RImm 2) r8
---     , Arith Add pcreg r8 jmpreg
---     , Jump  UA fibAbsAddr
---     , Debug (DebugReg r8 21)
---     , EndProg
+-- define recursive fib function
+progFibRecr :: [Instruction]
+progFibRecr = [
+    Store (MImm 9) 0
+    , Load  (RAddr 0) r7
+    , Load  (RImm 2) r8
+    , Arith Add pcreg r8 jmpreg
+    , Jump  UA fibAbsAddr
+    , Push r8
+    , Pop r8 
+    , EndProg
 
---     , Load (RImm 2) r8
---     , Arith Lt r7 r8 r8    -- whether input < 2
---     , Jump CA recursionOut -- Conditional Absolute jump
+    , Load (RImm 2) r8
+    , Arith Lt r7 r8 r8    -- whether input < 2
+    , Jump CA recursionOut -- Conditional Absolute jump
 
---     , Push jmpreg   -- fib (n-1)
---     , Push r7
---     , Arith Decr r7 zeroreg r7 -- r7 - 1
---     , Load (RImm 2) r8
---     , Arith Add pcreg r8 jmpreg
---     , Jump UA fibAbsAddr
---     , Pop r7
---     , Pop jmpreg
---     , Arith Id r8 zeroreg r9 -- move r8 to r9
---     , Push jmpreg -- fib (n-2)
---     , Push r7
---     , Push r9
---     , Load (RImm 2) r8
---     , Arith Sub r7 r8 r7 -- r7 - 2
---     , Arith Add pcreg r8 jmpreg
---     , Jump UA fibAbsAddr    -- unconditional Absolute jump
---     , Pop r9
---     , Pop r7
---     , Pop jmpreg
+    , Push jmpreg   -- fib (n-1)
+    , Push r7
+    , Arith Decr r7 zeroreg r7 -- r7 - 1
+    , Load (RImm 2) r8
+    , Arith Add pcreg r8 jmpreg
+    , Jump UA fibAbsAddr
+    , Pop r7
+    , Pop jmpreg
+    , Arith Id r8 zeroreg r9 -- move r8 to r9
+    , Push jmpreg -- fib (n-2)
+    , Push r7
+    , Push r9
+    , Load (RImm 2) r8
+    , Arith Sub r7 r8 r7 -- r7 - 2
+    , Arith Add pcreg r8 jmpreg
+    , Jump UA fibAbsAddr    -- unconditional Absolute jump
+    , Pop r9
+    , Pop r7
+    , Pop jmpreg
 
---     , Arith Add r8 r9 r8 -- fib (n-1） + fib (n-2)
---     , Jump UR 2         -- unconditional relative jump
---     , Load (RImm 1) r8  -- recursionOut fib 0 or fib 1
---     , Jump Back 0
---     ] 
---     where (fibAbsAddr, recursionOut) = (7, fromIntegral $ L.length progFibRecr - 2)
+    , Arith Add r8 r9 r8 -- fib (n-1） + fib (n-2)
+    , Jump UR 2         -- unconditional relative jump
+    , Load (RImm 1) r8  -- recursionOut fib 0 or fib 1
+    , Jump Back 0
+    ] 
+    where
+        fibAbsAddr   = 1 + (fromIntegral $ L.length $ L.takeWhile (/= EndProg) progFibRecr)
+        recursionOut = fromIntegral $ L.length progFibRecr - 2
 
 -- progFibIter = [
 --     Store (MImm 7) 0 -- mem[0] := 7

@@ -37,21 +37,33 @@ progLdSt = [
     , Push r9
     , EndProg
     ]
-
-progStack :: [Instruction]
-progStack = [
-    Load (RImm 3) r7
-    , Push r7
-    , Arith Incr r7 r7 r7
-    , Push r7
-    , Arith Nop 0 0 0
-
-    , Pop r8
-    , Pop r9
-    , Pop r10
-    , Arith Nop 0 0 0
+progLdSt2 :: [Instruction]
+progLdSt2 = [
+    Store (MImm 13) 0
+    , Store (MImm 14) 1
+    , Load (RAddr 0) r7
+    , Load (RAddr 1) r8
+    , Load (RImm  3) r9 
+    , Arith Add r7 r9 r9 -- r7 is ready, r8 is not ready
+    , Arith Add r8 r9 r8 -- r8 is ready
+    , Push r8            -- shoule write 30 to memory
     , EndProg
     ]
+
+-- progStack :: [Instruction]
+-- progStack = [
+--     Load (RImm 3) r7
+--     , Push r7
+--     , Arith Incr r7 r7 r7
+--     , Push r7
+--     , Arith Nop 0 0 0
+
+--     , Pop r8
+--     , Pop r9
+--     , Pop r10
+--     , Arith Nop 0 0 0
+--     , EndProg
+--     ]
 
 -- progMov :: [ISA]
 -- progMov = [

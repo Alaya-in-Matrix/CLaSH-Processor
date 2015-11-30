@@ -26,7 +26,11 @@ run :: [Instruction] -> Signal (Instruction, Word)
 run prog = let progRom = createIrom prog
             in sys progRom
 
-fuck prog sampNum = L.drop 1 $ sampleN sampNum $ run prog
+fuck :: [Instruction] -> Int -> [(Instruction, Word)]
+fuck prog sampNum = processHead $ sampleN sampNum $ run prog
+    where processHead []          = []
+          processHead ((i, d):xs) = "\nCaution: First ramOut undefined\n" `trace` (i, maxBound):xs -- 第一个时钟周期的ramOut会是undefined
+
 suck prog sampNum = mapM_ print $ takeUntil ((== EndProg) . fst) $ fuck prog sampNum
 
 takeUntil :: (a -> Bool) -> [a] -> [a]

@@ -205,7 +205,7 @@ instance Default PState where
 
 traceEspro i s s' o = show i +~+ "\n" +~+ show s +~+ "\n" +~+ show s' +~+ "\n" +~+ show o +~+ "\n"
 esprockellMealy :: PState -> PIn -> (PState, POut)
-esprockellMealy state (instr, memData) = traceEspro instr state state' out `trace` (state', out)
+esprockellMealy state (instr, memData) = (state', out)
     where 
         MachCode{..}   = decode sp instr
         PState{..}     = state

@@ -66,13 +66,15 @@ progStack = [
     , EndProg
     ]
 
--- progMov :: [ISA]
--- progMov = [
---     Load (RImm 3) r7 
---     , Arith Id r7 zeroreg r8
---     , Debug (DebugReg r8 3)
---     , EndProg
---     ]
+progMov :: [Instruction]
+progMov = [
+    Load (RImm 3) r7 
+    , Arith Id r7 zeroreg r8
+    , Push r8
+    , Pop r9
+    , Arith Nop 0 0 0
+    , EndProg
+    ]
 
 -- progJump :: [ISA]
 -- progJump = [

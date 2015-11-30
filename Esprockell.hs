@@ -188,7 +188,7 @@ updateSp Down sp = sp - 1
 
 type PIn       = (Instruction, Word) -- instruction and data from memory
 type POut      = (DAddr, DAddr, Bool, Word, PC) -- write addr, read addr, write enable, data out, PC
-type LoadDelay = 2
+type LoadDelay = 1
 data PState = PState { reg   :: Reg
                      , cnd   :: Bool
                      , pc    :: PC
@@ -204,6 +204,7 @@ instance Default PState where
                  , sp    = sp0 }
 
 traceEspro i s s' o = show i +~+ "\n" +~+ show s +~+ "\n" +~+ show s' +~+ "\n" +~+ show o +~+ "\n"
+
 esprockellMealy :: PState -> PIn -> (PState, POut)
 esprockellMealy state (instr, memData) = (state', out)
     where 
@@ -230,10 +231,13 @@ esprockell = esprockellMealy `mealy` def
 
 sys :: IRom
     -> Signal (Instruction, Word)
-sys prog = let (wAddr, rAddr, we, wData, pc) = unbundle $ esprockell pIn
-               pIn                           = register (nop, 0) $ bundle (romOut, ramOut)
-               ramOut                        = dataRam wAddr rAddr we wData
-               romOut                        = (prog !!) <$> (pc-1) 
-               nop                           = Arith Nop 0 0 0
-               dataRam = blockRam (repeat maxBound :: Mem)
+sys prog = let (wAddr, rAddr, we, wData, pc') = unbundle $ esprockell pIn
+               pIn                            = bundle (romOut, ramOut)
+               ramOut                         = dataRam wAddr rAddr we wData
+               romOut                         = (prog !!) <$> pc
+               pc                             = register 0 $ pc'
+               nop                            = Arith Nop 0 0 0
+               dataRam                        = blockRam (repeat maxBound :: Mem)
             in bundle (romOut, ramOut) -- instruction, data write to mem, data read from mem
+
+topEntity = sys

@@ -76,20 +76,21 @@ progMov = [
     , EndProg
     ]
 
--- progJump :: [ISA]
--- progJump = [
---     Load (RImm 1) r7
---     , Load (RImm 2) r8
---     , Load (RImm 2) r9
---     , Arith Add pcreg r9 jmpreg
---     , Jump UR 3
---     , Debug (DebugReg r9 3)
---     , EndProg
+progJump :: [Instruction]
+progJump = [
+    Load (RImm 1)   r7 -- r7 := 1
+    , Load (RImm 2) r8 -- r8 := 2
+    , Load (RImm 2) r9 -- r9 := 2
+    , Arith Add pcreg r9 jmpreg
+    , Jump UR 5
+    , Store (MReg r9) 0
+    , Load (RAddr 0) r10
+    , Arith Nop 0 0 0
+    , EndProg
 
---     , Arith Add r7 r8 r9
---     , Debug (DebugReg jmpreg 5)
---     , Jump Back undefined
---     ]
+    , Arith Add r7 r8 r9 -- r9 := 1+2= 3
+    , Jump Back 0
+    ]
 
 -- progMax :: [ISA]
 -- progMax = [

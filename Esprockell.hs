@@ -183,7 +183,7 @@ updateSp Down sp = sp - 1
 
 type PIn       = (Instruction, Word) -- instruction and data from memory
 type POut      = (DAddr, DAddr, Bool, Word, PC) -- write addr, read addr, write enable, data out, PC
-type LoadDelay = 1
+type LoadDelay = 2
 data PState = PState { reg   :: Reg
                      , cnd   :: Bool
                      , pc    :: PC

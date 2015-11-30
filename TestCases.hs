@@ -30,6 +30,11 @@ progLdSt :: [Instruction]
 progLdSt = [
     Store (MImm 13) 0
     , Load (RAddr 0) r9
+    , Load (RImm 3) r7
+    , Load (RImm 4) r8
+    , Arith Add r7 r8 r8
+    , Arith Add r8 r9 r9 -- r9 == 20
+    , Push r9
     , EndProg
     ]
 

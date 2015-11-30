@@ -221,7 +221,7 @@ esprockellMealy state (instr, memData) = (state', out)
         reg0   = load ldCode toReg (ldImm, aluOut) $ reg <~ (last ldBuf, memData)
         reg'   = reg0 <~ (zeroreg, 0) <~ (pcreg, fromIntegral pc')
         toMem  = store stCode (stImm, x)
-        pc'    = updatePC (jmpCode, cnd') (pc, jmpNum, reg' !! jmpreg)
+        pc'    = updatePC (jmpCode, cnd) (pc, jmpNum, reg' !! jmpreg)
         sp'    = updateSp spCode sp
 
 esprockell :: Signal (Instruction, Word) 

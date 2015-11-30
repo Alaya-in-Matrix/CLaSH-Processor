@@ -1,6 +1,11 @@
 {-# language RecordWildCards #-}
 module Esprockell where
 
+{-------------------------
+| TODO: 
+| add error status
+| store address in register such pointer could be implemented
+-------------------------}
 import CLaSH.Prelude hiding(Word)
 import Debug.Trace
 import qualified Data.List as L

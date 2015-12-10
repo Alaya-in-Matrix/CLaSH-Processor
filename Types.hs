@@ -78,5 +78,4 @@ zeroreg = 0  :: RegIdx -- constant zero
 jmpreg  = 1  :: RegIdx -- store the return addess when calling a function, usally use "pcreg + 2"
 pcreg   = 2  :: RegIdx -- store the current PC
 sp0     = 20 :: DAddr -- stack pointer
-
 regs <~ (idx, val) = replace idx val regs -- no bound-violation check

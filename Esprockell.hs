@@ -8,6 +8,7 @@ module Esprockell where
 -------------------------}
 import CLaSH.Prelude hiding(Word)
 import Types
+import InstructionROM
 
 
 
@@ -113,15 +114,15 @@ esprockell :: Signal (Instruction, Word)
 esprockell = esprockellMealy `mealy` def
 
 
-sys :: IRom
-    -> Signal (Instruction, Word)
-sys prog = let (wAddr, rAddr, we, wData, pc') = unbundle $ esprockell pIn
-               pIn                            = bundle (romOut, ramOut)
-               ramOut                         = dataRam wAddr rAddr we wData
-               romOut                         = (prog !!) <$> pc
-               pc                             = register 0 $ pc'
-               nop                            = Arith Nop 0 0 0
-               dataRam                        = blockRam (repeat maxBound :: Mem)
-            in bundle (romOut, ramOut) -- instruction, data write to mem, data read from mem
+-- sys :: IRom
+--     -> Signal (Instruction, Word)
+-- sys prog = let (wAddr, rAddr, we, wData, pc') = unbundle $ esprockell pIn
+--                pIn                            = bundle (romOut, ramOut)
+--                ramOut                         = dataRam wAddr rAddr we wData
+--                romOut                         = (prog !!) <$> pc
+--                pc                             = register 0 $ pc'
+--                nop                            = Arith Nop 0 0 0
+--                dataRam                        = blockRam (repeat maxBound :: Mem)
+--             in bundle (romOut, ramOut) -- instruction, data write to mem, data read from mem
 
-topEntity = sys
+-- topEntity = sys

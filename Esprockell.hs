@@ -7,107 +7,9 @@ module Esprockell where
 | store address in register such pointer could be implemented
 -------------------------}
 import CLaSH.Prelude hiding(Word)
-import Debug.Trace
-import qualified Data.List as L
-
-type Word     = Signed 16 -- set data width to 16
-type RegSize  = 32        -- we have 16 registers
-type IMemSize = 128
-type DMemSize = 128
-type RegIdx   = Unsigned 5
-type PC       = Signed 8 -- PC 可能会是负数，比如 Jump UR (-1)
-type DAddr    = Unsigned 7
-
-type Reg  = Vec RegSize  Word
-type Mem  = Vec DMemSize Word
-type IRom = Vec IMemSize Instruction
-
-(+~+) = (L.++)
+import Types
 
 
-
--- some special registers
--- the special usage of these registers is just "should-be"
--- user is still able to use these registers as normal registers, but that is highly unrecommended
-zeroreg = 0  :: RegIdx -- constant zero
-jmpreg  = 1  :: RegIdx -- store the return addess when calling a function, usally use "pcreg + 2"
-pcreg   = 2  :: RegIdx -- store the current PC
-
-sp0     = 20 :: DAddr -- stack pointer
-
-regs <~ (idx, val) = replace idx val regs -- no bound-violation check
-
-vec !? idx  | fromEnum idx < length vec = Just $ vec !! idx
-            | otherwise                 = Nothing
-
-data Instruction = Arith OpCode    RegIdx RegIdx RegIdx
-                 | Jump  JmpCode   PC                 
-                 | Load  LoadFrom  RegIdx
-                 | Store StoreFrom DAddr
-                 | Push  RegIdx
-                 | Pop   RegIdx
-                 | EndProg
-                 deriving(Eq, Show)
-
-data OpCode  = Nop | Id  | Incr | Decr 
-             | Neg | Not
-             | Add | Sub | Mul  | Eq | Ne | Lt | Gt | Le | Ge 
-             | And | Or  | Xor
-             deriving(Eq, Show)
-data JmpCode = NoJmp -- No jump
-             | UA    -- UnConditional Absolute jump
-             | UR    -- UnConditional Relative jump
-             | CA    -- Conditional   Absolute jump
-             | CR    -- Conditional   Relative jump
-             | Back  -- return from function
-             deriving(Eq, Show)
--- where does the data to load into register come from, from memory or use immediate number
-data LoadFrom = RAddr DAddr 
-              | RImm Word
-              deriving(Eq, Show)
-
--- where dose the data to store in memory come from, from register or use immediate number
-data StoreFrom = MReg RegIdx
-               | MImm Word
-               deriving(Eq, Show)
-
-
-data LdCode   = NoLoad  | LdImm | LdAddr | LdAlu  deriving(Eq, Show)
-data StCode   = NoStore | StImm | StReg           deriving(Eq, Show)
-data SpCode   = None    | Up    | Down            deriving(Eq, Show)
-data MachCode = MachCode {
-    ldCode     :: LdCode
-    , stCode   :: StCode
-    , opCode   :: OpCode
-    , jmpCode  :: JmpCode
-    , spCode   :: SpCode
-    , ldImm    :: Word
-    , stImm    :: Word
-    , fromReg0 :: RegIdx -- oprand 0
-    , fromReg1 :: RegIdx -- oprand 1
-    , toReg    :: RegIdx -- write back register
-    , toAddr   :: DAddr  -- write address
-    , fromAddr :: DAddr  -- read address
-    , we       :: Bool
-    , jmpNum   :: PC
-    } deriving(Eq, Show)
-
-instance Default MachCode where
-    def = MachCode { ldCode   = NoLoad
-                   , stCode   = NoStore
-                   , opCode   = Nop
-                   , jmpCode  = NoJmp
-                   , spCode   = None
-                   , ldImm    = 0
-                   , stImm    = 0
-                   , fromReg0 = zeroreg
-                   , fromReg1 = zeroreg
-                   , toReg    = zeroreg
-                   , toAddr   = 0
-                   , fromAddr = 0
-                   , we       = False
-                   , jmpNum  = 0
-                   }
 
 decode :: DAddr         -- ^ stack pointer
        -> Instruction   -- ^ current instruction
@@ -186,24 +88,6 @@ updateSp None sp = sp
 updateSp Up   sp = sp + 1
 updateSp Down sp = sp - 1
 
-type PIn       = (Instruction, Word) -- instruction and data from memory
-type POut      = (DAddr, DAddr, Bool, Word, PC) -- write addr, read addr, write enable, data out, PC
-type LoadDelay = 1
-data PState = PState { reg   :: Reg
-                     , cnd   :: Bool
-                     , pc    :: PC
-                     , sp    :: DAddr
-                     , ldBuf :: Vec LoadDelay RegIdx
-                     } deriving(Eq, Show)
-
-instance Default PState where
-    def = PState { reg   = repeat 0
-                 , cnd   = False
-                 , pc    = 0
-                 , ldBuf = repeat 0
-                 , sp    = sp0 }
-
-traceEspro i s s' o = show i +~+ "\n" +~+ show s +~+ "\n" +~+ show s' +~+ "\n" +~+ show o +~+ "\n"
 
 esprockellMealy :: PState -> PIn -> (PState, POut)
 esprockellMealy state (instr, memData) = (state', out)

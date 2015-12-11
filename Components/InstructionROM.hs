@@ -6,5 +6,5 @@ import Components.Types
 -- romContent :: IRom
 -- romContent = repeat EndProg
 
--- instrRom :: (Enum addr) => addr -> Instruction
+instrRom :: PC -> Instruction
 instrRom = asyncRom 

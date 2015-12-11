@@ -3,7 +3,7 @@ module Components.Types where
 import CLaSH.Prelude hiding(Word)
 
 type Word     = Signed 16 -- set data width to 16
-type RegSize  = 32        -- we have 16 registers
+type RegSize  = 32        -- we have 32 registers
 type IMemSize = 128
 type DMemSize = 128
 type RegIdx   = Unsigned 5
@@ -63,8 +63,8 @@ instance Default MachCode where
                    , jmpNum   = 0
                    }
 
-type PIn       = (Instruction, Word, Word) -- instruction and data from memory and data from outside
-type POut      = (DAddr, DAddr, Bool, Word, PC, Word) -- write addr, read addr, write enable, data out, PC, generalPurposeOutpu
+type PIn       = (Instruction, Word, Bool, Word) -- (instr, memData, gpInEn, gpInData)
+type POut      = (DAddr, DAddr, Bool, Word, PC, Bool, Word) -- (wAddr, rAddr, wEn, wData, PC, gpOutEn, gpOutData)
 type LoadDelay = 1
 data PState    = PState { reg :: Reg, cnd :: Bool, pc :: PC, sp :: DAddr, ldBuf :: Vec LoadDelay RegIdx } deriving(Eq, Show)
 instance Default PState where
@@ -79,5 +79,6 @@ jmpreg  = 1  :: RegIdx -- store the return addess when calling a function, usall
 pcreg   = 2  :: RegIdx -- store the current PC
 iReg    = 3  :: RegIdx -- for general input
 oReg    = 4  :: RegIdx -- for general output
+iEn     = 5  :: RegIdx -- whether the gpInput is valid
 sp0     = 20 :: DAddr -- stack pointer
 regs <~ (idx, val) = replace idx val regs -- no bound-violation check

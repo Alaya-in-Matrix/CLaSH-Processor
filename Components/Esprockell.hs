@@ -88,25 +88,31 @@ updateSp None sp = sp
 updateSp Up   sp = sp + 1
 updateSp Down sp = sp - 1
 
+oEn :: RegIdx -> RegIdx -> LdCode -> Bool
+oEn bufLast toReg ldCode = memLoad || aluImm
+    where memLoad = bufLast == oReg
+          aluImm  = toReg   == oReg && (ldCode == LdImm || ldCode == LdAlu)
 
 esprockellMealy :: PState -> PIn -> (PState, POut)
-esprockellMealy state (instr, memData, gpInput) = (state', out)
+esprockellMealy state (instr, memData, gpInEn, gpInput) = (state', out)
     where 
         MachCode{..}   = decode sp instr
         PState{..}     = state
         (aluOut, cnd') = alu opCode (x, y)
-        state' = PState { reg = reg', cnd = cnd', pc = pc', sp = sp', ldBuf = ldBuf'}
-        out    = (toAddr, fromAddr, we, toMem, pc', gpOut)
-        gpOut  = reg' !! oReg
-        (x, y) = (reg0 !! fromReg0, reg0 !! fromReg1)
-        ldBuf' = ldReg +>> ldBuf
+        state'  = PState { reg = reg', cnd = cnd', pc = pc', sp = sp', ldBuf = ldBuf'}
+        out     = (toAddr, fromAddr, we, toMem, pc', gpOutEn, gpOut)
+        gpOut   = reg' !! oReg
+        gpOutEn = oEn bufLast toReg ldCode
+        (x, y)  = (reg0 !! fromReg0, reg0 !! fromReg1)
+        ldBuf'  = ldReg +>> ldBuf
+        bufLast = last ldBuf
         ldReg 
           | ldCode == LdAddr = toReg
           | otherwise        = 0
-        reg0 = reg  <~ (zeroreg, 0)         -- r0
+        reg0 = reg  <~ (iReg, if gpInEn then gpInput else reg !! iReg) 
+                    <~ (bufLast, memData)
+                    <~ (zeroreg, 0)         -- r0
                     <~ (pcreg, fromIntegral pc) -- pc of next clock
-                    <~ (iReg, gpInput) 
-                    <~ (last ldBuf, memData)
         reg' = load ldCode toReg (ldImm, aluOut) reg0
         -- reg0   = load ldCode toReg (ldImm, aluOut) $ reg <~ (last ldBuf, memData)
         -- reg'   = reg0 <~ (zeroreg, 0) <~ (pcreg, fromIntegral pc')
@@ -117,6 +123,8 @@ esprockellMealy state (instr, memData, gpInput) = (state', out)
 esprockell :: Signal PIn
            -> Signal POut
 esprockell = esprockellMealy `mealy` def
+
+topEntity = esprockell
 
 
 -- sys :: IRom

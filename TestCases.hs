@@ -21,7 +21,7 @@ progAdd = [
   Load (RImm 3) r7 
   , Load (RImm 9) r8 
   , Arith Add r7 r8 r9
-  , Store (MReg r9) 0
+  , Arith Id r9 0 oReg
   , EndProg
     ]
 
@@ -35,6 +35,7 @@ progLdSt = [
     , Arith Add r7 r8 r8
     , Arith Add r8 r9 r9 -- r9 == 20
     , Push r9
+    , Pop oReg
     , EndProg
     ]
 progLdSt2 :: [Instruction]
@@ -47,6 +48,7 @@ progLdSt2 = [
     , Arith Add r7 r9 r9 -- r7 is ready, r8 is not ready
     , Arith Add r8 r9 r8 -- r8 is ready
     , Push r8            -- shoule write 30 to memory
+    , Pop oReg
     , EndProg
     ]
 
@@ -58,10 +60,11 @@ progStack = [
     , Push r7
 
     , Pop r8 -- r8 == 4
-    , Pop r9 -- r9 == 3
     , Arith Add r7 r8 r8 -- r8 == 8, r8 is ready, r9 is not ready
+    , Pop r9 -- r9 == 3
     , Arith Add r8 r9 r9 -- r9 == 8 + 3 == 11
     , Push r9
+    , Pop oReg
     , EndProg
     ]
 
@@ -70,8 +73,7 @@ progMov = [
     Load (RImm 3) r7 
     , Arith Id r7 zeroreg r8
     , Push r8
-    , Pop r9
-    , Arith Nop 0 0 0
+    , Pop oReg
     , EndProg
     ]
 
@@ -99,7 +101,7 @@ progMax = [
     , Load  (RImm  2) r9 -- inc to pc
     , Arith Add pcreg r9 jmpreg
     , Jump  UR 3
-    , Push r8
+    , Arith Id r8 0 oReg
     , EndProg
 
     , Arith Lt r7 r8 r9
@@ -116,8 +118,7 @@ progFibRecr = [
     , Load  (RImm 2) r8
     , Arith Add pcreg r8 jmpreg
     , Jump  UA fibAbsAddr
-    , Push r8
-    , Pop r8 
+    , Arith Id r8 0 oReg
     , EndProg
 
     , Load (RImm 2) r8
@@ -154,14 +155,13 @@ progFibRecr = [
         recursionOut = fromIntegral $ L.length progFibRecr - 2
 
 progFibIter = [
-    Store (MImm 8) 0 -- mem[0] := 7
+    Store (MImm 8) 0 -- mem[0] := 8
 
     , Load (RAddr 0) r7 -- r7 := mem[0]
     , Load (RImm 2)  r8 -- r8 := 2
     , Arith Add pcreg r8 jmpreg -- jmpreg := pcreg + r8
     , Jump UA fibIterAddr -- call fibIter
-    , Store (MReg r8) 0
-    , Load (RAddr 0) r9
+    , Arith Id r8 0 oReg
     , EndProg
 
     , Load (RImm 1) r8 -- r8 := 1
@@ -187,8 +187,7 @@ progFacIter = [
     , Load (RImm 2)  r8  -- r8 := 2
     , Arith Add pcreg r8 jmpreg -- jmpreg := pcreg + 2
     , Jump UA facIterAddr   -- call facIter
-    , Store (MReg r8) 0
-    , Load (RAddr 0) r9
+    , Arith Id r8 0 oReg
     , EndProg
     
     , Load  (RImm 1) r8     -- r8 = 1
@@ -208,8 +207,7 @@ progFacRecr = [
     , Load  (RImm  2) r8
     , Arith Add       pcreg r8 jmpreg
     , Jump  UA        facRecrAddr
-    , Store (MReg r8) 0
-    , Load  (RAddr 0) r9
+    , Arith Id r8 0 oReg
     , EndProg
 
     , Arith Eq r7 zeroreg r8

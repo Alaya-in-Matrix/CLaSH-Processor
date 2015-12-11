@@ -90,26 +90,32 @@ updateSp Down sp = sp - 1
 
 
 esprockellMealy :: PState -> PIn -> (PState, POut)
-esprockellMealy state (instr, memData) = (state', out)
+esprockellMealy state (instr, memData, gpInput) = (state', out)
     where 
         MachCode{..}   = decode sp instr
         PState{..}     = state
         (aluOut, cnd') = alu opCode (x, y)
         state' = PState { reg = reg', cnd = cnd', pc = pc', sp = sp', ldBuf = ldBuf'}
-        out    = (toAddr, fromAddr, we, toMem, pc')
-        (x, y) = (reg !! fromReg0, reg !! fromReg1)
+        out    = (toAddr, fromAddr, we, toMem, pc', gpOut)
+        gpOut  = reg' !! oReg
+        (x, y) = (reg0 !! fromReg0, reg0 !! fromReg1)
         ldBuf' = ldReg +>> ldBuf
         ldReg 
           | ldCode == LdAddr = toReg
           | otherwise        = 0
-        reg0   = load ldCode toReg (ldImm, aluOut) $ reg <~ (last ldBuf, memData)
-        reg'   = reg0 <~ (zeroreg, 0) <~ (pcreg, fromIntegral pc')
+        reg0 = reg  <~ (zeroreg, 0)         -- r0
+                    <~ (pcreg, fromIntegral pc) -- pc of next clock
+                    <~ (iReg, gpInput) 
+                    <~ (last ldBuf, memData)
+        reg' = load ldCode toReg (ldImm, aluOut) reg0
+        -- reg0   = load ldCode toReg (ldImm, aluOut) $ reg <~ (last ldBuf, memData)
+        -- reg'   = reg0 <~ (zeroreg, 0) <~ (pcreg, fromIntegral pc')
         toMem  = store stCode (stImm, x)
         pc'    = updatePC (jmpCode, cnd) (pc, jmpNum, reg' !! jmpreg)
         sp'    = updateSp spCode sp
 
-esprockell :: Signal (Instruction, Word) 
-           -> Signal (DAddr, DAddr, Bool, Word, PC)
+esprockell :: Signal PIn
+           -> Signal POut
 esprockell = esprockellMealy `mealy` def
 
 

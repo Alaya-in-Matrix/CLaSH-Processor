@@ -63,8 +63,8 @@ instance Default MachCode where
                    , jmpNum   = 0
                    }
 
-type PIn       = (Instruction, Word) -- instruction and data from memory
-type POut      = (DAddr, DAddr, Bool, Word, PC) -- write addr, read addr, write enable, data out, PC
+type PIn       = (Instruction, Word, Word) -- instruction and data from memory and data from outside
+type POut      = (DAddr, DAddr, Bool, Word, PC, Word) -- write addr, read addr, write enable, data out, PC, generalPurposeOutpu
 type LoadDelay = 1
 data PState    = PState { reg :: Reg, cnd :: Bool, pc :: PC, sp :: DAddr, ldBuf :: Vec LoadDelay RegIdx } deriving(Eq, Show)
 instance Default PState where
@@ -77,5 +77,7 @@ instance Default PState where
 zeroreg = 0  :: RegIdx -- constant zero
 jmpreg  = 1  :: RegIdx -- store the return addess when calling a function, usally use "pcreg + 2"
 pcreg   = 2  :: RegIdx -- store the current PC
+iReg    = 3  :: RegIdx -- for general input
+oReg    = 4  :: RegIdx -- for general output
 sp0     = 20 :: DAddr -- stack pointer
 regs <~ (idx, val) = replace idx val regs -- no bound-violation check

@@ -1,5 +1,5 @@
 {-# language RecordWildCards #-}
-module Esprockell where
+module Components.Esprockell where
 
 {-------------------------
 | TODO: 
@@ -7,8 +7,7 @@ module Esprockell where
 | store address in register such pointer could be implemented
 -------------------------}
 import CLaSH.Prelude hiding(Word)
-import Types
-import InstructionROM
+import Components.Types
 
 
 

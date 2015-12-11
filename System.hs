@@ -1,9 +1,9 @@
 module System where
 
 import CLaSH.Prelude hiding(Word)
-import Types
-import Esprockell
-import DataRAM
+import Components.Types
+import Components.Esprockell
+import Components.DataRAM
 
 sys :: (PC -> Instruction) -> Signal (Instruction, Word)
 sys prog = let (wAddr, rAddr, we, wData, pc') = unbundle $ esprockell pIn

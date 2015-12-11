@@ -1,6 +1,6 @@
-module DataRAM where
+module Components.DataRAM where
 
 import CLaSH.Prelude hiding(Word)
-import Types
+import Components.Types
 
 dataRam = blockRam (repeat maxBound :: Mem)

@@ -1,4 +1,4 @@
-module Types where 
+module Components.Types where 
 
 import CLaSH.Prelude hiding(Word)
 

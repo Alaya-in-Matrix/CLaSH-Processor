@@ -1,6 +1,6 @@
 module TestCases where
 
-import Esprockell
+import Components.Types
 import CLaSH.Prelude
 import qualified Data.List as L
 

@@ -1,11 +1,12 @@
 module Test where
 
-import Esprockell
-import TestCases
-
 import CLaSH.Prelude hiding(Word)
 import qualified Data.List as L
 import Debug.Trace
+
+import Components.Types
+import System
+import TestCases
 
 {------------------------------------
 | Test esprockell
@@ -15,8 +16,9 @@ import Debug.Trace
 
 -- L.foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
 -- replace :: (Enum i, KnownNat n) => i -> a -> Vec n a -> Vec n a
-createIrom :: [Instruction] -> IRom
-createIrom prog = createIrom' prog defaultImm
+createIrom :: [Instruction] -> (PC -> Instruction)
+createIrom prog = asyncRom $ createIrom' prog defaultImm
+-- createIrom prog = createIrom' prog defaultImm
   where createIrom' p imm   = L.foldr pushIm imm $ L.zip [0..] p
         pushIm (idx, v) imm = replace idx v imm
         defaultImm          = repeat EndProg :: IRom

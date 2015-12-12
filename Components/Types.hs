@@ -82,3 +82,15 @@ oReg    = 4  :: RegIdx -- for general output
 iEn     = 5  :: RegIdx -- whether the gpInput is valid
 sp0     = 20 :: DAddr -- stack pointer
 regs <~ (idx, val) = replace idx val regs -- no bound-violation check
+
+
+r7  = 7  :: RegIdx
+r8  = 8  :: RegIdx
+r9  = 9  :: RegIdx
+r10 = 10 :: RegIdx
+r11 = 11 :: RegIdx
+r12 = 12 :: RegIdx
+r13 = 13 :: RegIdx
+r14 = 14 :: RegIdx
+r15 = 15 :: RegIdx
+r16 = 16 :: RegIdx

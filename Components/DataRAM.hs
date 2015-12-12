@@ -9,5 +9,3 @@ dataRam :: Signal DAddr
         -> Signal Word 
         -> Signal Word
 dataRam = blockRam (repeat maxBound :: Mem)
-
-topEntity = dataRam

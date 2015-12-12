@@ -6,5 +6,8 @@ import Components.Types
 -- romContent :: IRom
 -- romContent = repeat EndProg
 
-instrRom :: PC -> Instruction
-instrRom = asyncRom 
+instrRom :: IRom -> PC -> Instruction
+instrRom prog = asyncRom prog 
+
+-- topEntity :: PC -> Instruction
+-- topEntity = instrRom $ repeat (Arith Incr zeroreg zeroreg oReg)

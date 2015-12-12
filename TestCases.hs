@@ -5,17 +5,6 @@ import CLaSH.Prelude
 import qualified Data.List as L
 
 
-r7  = 7  :: RegIdx
-r8  = 8  :: RegIdx
-r9  = 9  :: RegIdx
-r10 = 10 :: RegIdx
-r11 = 11 :: RegIdx
-r12 = 12 :: RegIdx
-r13 = 13 :: RegIdx
-r14 = 14 :: RegIdx
-r15 = 15 :: RegIdx
-r16 = 16 :: RegIdx
-
 progAdd :: [Instruction]
 progAdd = [
   Load (RImm 3) r7 

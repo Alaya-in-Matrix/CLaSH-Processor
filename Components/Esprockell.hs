@@ -127,7 +127,7 @@ esprockell :: Signal PIn
            -> Signal POut
 esprockell = esprockellMealy `mealy` def
 
-topEntity = esprockell
+-- topEntity = esprockell
 
 
 -- sys :: IRom

@@ -8,6 +8,7 @@ module Components.Esprockell where
 -------------------------}
 import CLaSH.Prelude hiding(Word)
 import Components.Types
+import Debug.Trace
 
 
 

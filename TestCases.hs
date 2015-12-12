@@ -227,3 +227,26 @@ progFacRecr = [
     ]
     where facRecrAddr = 1 + (fromIntegral $ L.length $ L.takeWhile (/= EndProg) progFacRecr)
           facRecrRet  = fromIntegral $ L.length progFacRecr - 1
+
+progInput = register (False, 0) $ register (False, 0) $ register (True, 3) $ register (True, 4) $ register (True, 5) $ signal (False, 0)
+progIO = [
+    Arith Id iReg 0 r7
+    , Jump CR 2
+    , Jump UR (-2)
+
+    , Load (RImm 2)  r8  -- r8 := 2
+    , Arith Add pcreg r8 jmpreg -- jmpreg := pcreg + 2
+    , Jump UA facIterAddr   -- call facIter
+    , Arith Id r8 0 oReg
+    , EndProg
+    
+    , Load  (RImm 1) r8     -- r8 = 1
+    , Arith Eq       r7 zeroreg r9  
+    , Jump  CA       facIterRet 
+    , Arith Mul      r8 r7 r8
+    , Arith Decr     r7 r7 r7
+    , Jump  UR       (-4)
+    , Jump  Back     0 -- return
+    ]
+    where facIterRet  = fromIntegral $ L.length progIO - 1
+          facIterAddr = 1 + (fromIntegral $ L.length $ L.takeWhile (/= EndProg) progIO)

@@ -23,20 +23,29 @@ createIrom prog = asyncRom $ createIrom' prog defaultImm
         pushIm (idx, v) imm = replace idx v imm
         defaultImm          = repeat EndProg :: IRom
 
+noInput = signal (False, 0) :: Signal (Bool, Word)
 
-run :: [Instruction] -> Signal (Bool, Word)
+run :: [Instruction] -> Signal (Bool, Word) -> Signal (Bool, Word)
 run prog = let progRom = createIrom prog
-            in sys progRom $ signal (False, 0)
+            in sys progRom 
 
-fuck :: [Instruction] -> Int -> [(Bool, Word)]
-fuck prog sampNum = processHead $ sampleN sampNum $ run prog
-    where processHead []          = []
-          processHead ((i, d):xs) = "\nCaution: First ramOut undefined\n" `trace` (i, maxBound):xs -- 第一个时钟周期的ramOut会是undefined
-
+fuck prog sampNum = processHead $ sampleN sampNum $ run prog noInput
 suck prog sampNum = mapM_ print $ takeUntil ((== True) . fst) $ fuck prog sampNum
+
+buck prog sampNum iSig = processHead $ sampleN sampNum $ run prog iSig
+duck prog sampNum iSig = mapM_ print $ takeUntil ((== True) . fst) $ buck prog sampNum iSig
+
+muck = undefined
+tuck = undefined
+cock = undefined
+dock = undefined
+
 
 takeUntil :: (a -> Bool) -> [a] -> [a]
 takeUntil _ [] = []
 takeUntil pred (x:xs) 
     | pred x = [x]
     | otherwise = x : takeUntil pred xs
+
+processHead []          = []
+processHead ((i, d):xs) = "\nCaution: First ramOut undefined\n" `trace` (i, maxBound):xs -- 第一个时钟周期的ramOut会是undefined

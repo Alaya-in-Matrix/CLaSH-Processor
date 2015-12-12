@@ -98,7 +98,8 @@ esprockellMealy state (instr, memData, gpInEn, gpInput) = (state', out)
     where 
         MachCode{..}   = decode sp instr
         PState{..}     = state
-        (aluOut, cnd') = alu opCode (x, y)
+        (aluOut, aluCnd) = alu opCode (x, y)
+        cnd' = if fromReg0 == iReg || opCode == Id then gpInEn else aluCnd
         state'  = PState { reg = reg', cnd = cnd', pc = pc', sp = sp', ldBuf = ldBuf'}
         out     = (toAddr, fromAddr, we, toMem, pc', gpOutEn, gpOut)
         gpOut   = reg' !! oReg
@@ -109,8 +110,9 @@ esprockellMealy state (instr, memData, gpInEn, gpInput) = (state', out)
         ldReg 
           | ldCode == LdAddr = toReg
           | otherwise        = 0
-        reg0 = reg  <~ (iReg, if gpInEn then gpInput else reg !! iReg) 
-                    <~ (bufLast, memData)
+        reg0 = reg  <~ (bufLast, memData)
+                    <~ (iReg, gpInput) 
+                    <~ (iEn, fromIntegral $ pack gpInEn)
                     <~ (zeroreg, 0)         -- r0
                     <~ (pcreg, fromIntegral pc) -- pc of next clock
         reg' = load ldCode toReg (ldImm, aluOut) reg0

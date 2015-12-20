@@ -93,8 +93,15 @@ showFib =  mainProg ++ fibCalc ++ outputVal ++ (repeat EndProg)
                      :> Arith Add r7 r9 r7
                      :> Load (RImm 0b0000000011111111) r9 -- mask,  only the least 8 bit of data is valid
                      :> Arith And r7 r9 r7
+                     :> Load (RImm 0b1111111111111111) oReg -- mask,  only the least 8 bit of data is valid
+                     :> Load (RImm 0b1111111111111111) oReg -- mask,  only the least 8 bit of data is valid
+                     :> Load (RImm 0b1111111111111111) oReg -- mask,  only the least 8 bit of data is valid
+                     :> Load (RImm 0b1111111111111111) oReg -- mask,  only the least 8 bit of data is valid
                      :> Arith Id r7 0 oReg
-                     :> Arith Not zeroreg zeroreg oReg
+                     :> Load (RImm 0b1111111111111111) oReg -- mask,  only the least 8 bit of data is valid
+                     :> Load (RImm 0b1111111111111111) oReg -- mask,  only the least 8 bit of data is valid
+                     :> Load (RImm 0b1111111111111111) oReg -- mask,  only the least 8 bit of data is valid
+                     :> Load (RImm 0b1111111111111111) oReg -- mask,  only the least 8 bit of data is valid
                      :> Pop r9
                      :> Pop r7
                      :> Jump Back 0

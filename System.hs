@@ -1,3 +1,4 @@
+{-# language BinaryLiterals #-}
 module System where
 
 import CLaSH.Prelude hiding(Word)
@@ -43,21 +44,71 @@ prog =  Arith Id iReg 0 r7
      where facIterAddr = 9
            facIterRet  = 15
 
+trans :: Char -> Word
+trans = fromIntegral . fromEnum
+
+helloWorld :: IRom
+helloWorld =  Load (RImm 2) r8
+           :> Load (RImm (trans 'H')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans 'e')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans 'l')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans 'l')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans 'o')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans ' ')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans 'W')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans 'o')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans 'r')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans 'l')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans 'd')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> Load (RImm (trans '\n')) r7
+           :> Arith Add pcreg r8 jmpreg
+           :> Jump UA putCharLabel
+           :> EndProg
+           :> Load (RImm 0b0000000011111111) r9 -- mask,  only the least 8 bit of data is valid
+           :> Arith And r7 r9 r7
+           :> Load (RImm 0b0000000000000000) r9 -- mask,  set address, write data
+           :> Arith Or r7 r9 oReg
+           :> Load (RImm 0b1111111111111111) r9 -- set address = 1, write control
+           :> Arith Id r9 0  oReg
+           :> Jump Back 0
+           :> (repeat EndProg)
+           where putCharLabel = 38
+
+
 
 {-# ANN topEntity
   (defTop
     { t_name     = "Processor"
-    , t_inputs   = ["iEn", "SW"]
-    , t_outputs  = ["oEn", "LEDR"]
+    , t_inputs   = ["iEn", "PIn"]
+    , t_outputs  = ["oEn", "POut"]
     }) #-}
 
 topEntity :: Signal (Bool, Word) -> Signal (Bool, Word)
-topEntity = sys $ asyncRom prog
+topEntity = sys $ asyncRom helloWorld
 
 testInput :: Signal (Bool, Word)
 testInput = signal (True, 2)
 
 ret = topEntity testInput  
-
-fuck :: Word -> BitVector 16
-fuck = pack

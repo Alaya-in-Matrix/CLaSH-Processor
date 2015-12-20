@@ -42,6 +42,8 @@ alu op (x, y) =  (opRet, cnd)
             Add  -> x + y
             Sub  -> x - y
             Mul  -> x * y
+            Div  -> x `quot` y
+            Mod  -> x `rem` y
             Eq   -> if x == y then 1 else 0
             Ne   -> if x /= y then 1 else 0
             Gt   -> if x > y  then 1 else 0

@@ -21,7 +21,7 @@ data Instruction = Arith OpCode    RegIdx RegIdx RegIdx
                  | Pop   RegIdx
                  | EndProg
                  deriving(Eq, Show)
-data OpCode    = Nop   | Id | Incr | Decr | Neg | Not | Add | Sub | Mul  | Eq | Ne | Lt | Gt | Le | Ge | And | Or  | Xor deriving(Eq, Show)
+data OpCode    = Nop   | Id | Incr | Decr | Neg | Not | Add | Sub | Mul  | Div | Mod | Eq | Ne | Lt | Gt | Le | Ge | And | Or  | Xor deriving(Eq, Show)
 data JmpCode   = NoJmp | UA | UR   | CA   | CR  | Back  deriving(Eq, Show)
 data LoadFrom  = RAddr DAddr | RImm Word deriving(Eq, Show)
 data StoreFrom = MReg RegIdx | MImm Word deriving(Eq, Show)

@@ -17,7 +17,7 @@ progAdd = [
 -- 为何store后不能马上load?
 progLdSt :: [Instruction]
 progLdSt = [
-    Store (MImm 13) 0
+    Store (MImm 13) (ImmAdr 0)
     , Load (RAddr 0) r9
     , Load (RImm 3) r7
     , Load (RImm 4) r8
@@ -29,8 +29,8 @@ progLdSt = [
     ]
 progLdSt2 :: [Instruction]
 progLdSt2 = [
-    Store (MImm 13) 0
-    , Store (MImm 14) 1
+    Store (MImm 13) (ImmAdr 0)
+    , Store (MImm 14) (ImmAdr 1)
     , Load (RAddr 0) r7
     , Load (RAddr 1) r8
     , Load (RImm  3) r9 
@@ -73,7 +73,7 @@ progJump = [
     , Load (RImm 2) r9 -- r9 := 2
     , Arith Add pcreg r9 jmpreg
     , Jump UR 4
-    , Store (MReg r9) 0
+    , Store (MReg r9) (ImmAdr 0)
     , Load (RAddr 0) r10
     , EndProg
 
@@ -83,8 +83,8 @@ progJump = [
 
 progMax :: [Instruction]
 progMax = [
-    Store (MImm 3) 0
-    , Store (MImm 4) 1
+    Store (MImm 3) (ImmAdr 0)
+    , Store (MImm 4) (ImmAdr 1)
     , Load  (RAddr 0) r7
     , Load  (RAddr 1) r8
     , Load  (RImm  2) r9 -- inc to pc
@@ -102,7 +102,7 @@ progMax = [
 -- define recursive fib function
 progFibRecr :: [Instruction]
 progFibRecr = [
-    Store (MImm 9) 0
+    Store (MImm 9) (ImmAdr 0)
     , Load  (RAddr 0) r7
     , Load  (RImm 2) r8
     , Arith Add pcreg r8 jmpreg
@@ -144,7 +144,7 @@ progFibRecr = [
         recursionOut = fromIntegral $ L.length progFibRecr - 2
 
 progFibIter = [
-    Store (MImm 8) 0 -- mem[0] := 8
+    Store (MImm 8) (ImmAdr 0) -- mem[0] := 8
 
     , Load (RAddr 0) r7 -- r7 := mem[0]
     , Load (RImm 2)  r8 -- r8 := 2
@@ -170,7 +170,7 @@ progFibIter = [
           fibIterTestZero = (-6)
 
 progFacIter = [
-    Store (MImm 6) 0    -- mem[0] := 8
+    Store (MImm 6) (ImmAdr 0)    -- mem[0] := 8
     
     , Load (RAddr 0) r7  -- r7 := mem[0]
     , Load (RImm 2)  r8  -- r8 := 2
@@ -191,7 +191,7 @@ progFacIter = [
           facIterAddr = 1 + (fromIntegral $ L.length $ L.takeWhile (/= EndProg) progFacIter)
 
 progFacRecr = [
-    Store (MImm 6) 0
+    Store (MImm 6) (ImmAdr 0)
     , Load  (RAddr 0) r7
     , Load  (RImm  2) r8
     , Arith Add       pcreg r8 jmpreg
@@ -239,3 +239,15 @@ progIO = [
     ]
     where facIterRet  = fromIntegral $ L.length progIO - 1
           facIterAddr = 1 + (fromIntegral $ L.length $ L.takeWhile (/= EndProg) progIO)
+
+
+progPointer = [
+    Store (MImm 3) (ImmAdr 3)
+    , Load (RImm 3) r7 --
+    , Load (RPtr r7) r8  -- r8 = 3 now
+    , Arith Add r8 r8 r8 -- r8 = 4 now
+    , Arith Incr r7 0 r7 -- r7 = 4 now
+    , Store (MReg r8) (RegPtr r7)
+    , Load (RPtr r7) oReg
+    , EndProg
+    ]

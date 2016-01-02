@@ -18,7 +18,9 @@ sys prog gpInput = let (wAddr, rAddr, we, wData, pc', oEn, oData) = unbundle $ e
                        pc           = register 0 pc'
                     in bundle (oEn, oData)
 
-
+-- read input from general input
+-- calc factorial number
+-- output to general output
 prog :: IRom
 prog =  Arith Id iReg 0 r7
      :> Jump CR 2
@@ -170,12 +172,12 @@ helloWorld =  Load (RImm 2) r8
     }) #-}
 
 topEntity :: Signal (Bool, Word) -> Signal (Bool, Word)
-topEntity = sys $ asyncRom showFib
+topEntity = sys $ asyncRom prog
 
 testInput :: Signal (Bool, Word)
 testInput = register start $ register start $ register start $ register start $ signal (False, 2)
-    where start = (True, 10)
+    where start = (True, 4)
 
 ret = topEntity testInput  
 
-fuck n = mapM_ print $ filter fst $ sampleN n ret
+test n = mapM_ print $ filter fst $ sampleN n ret

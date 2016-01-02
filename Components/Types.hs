@@ -8,27 +8,71 @@ type IMemSize = 128
 type DMemSize = 128
 type RegIdx   = Unsigned 5
 type PC       = Signed 8 -- PC 可能会是负数，比如 Jump UR (-1)
-type DAddr    = Unsigned 7
 type Reg      = Vec RegSize  Word
 type Mem      = Vec DMemSize Word
 type IRom     = Vec IMemSize Instruction
+type DAddr    = Unsigned 7
+
+
+data RamAdr = RegPtr RegIdx
+            | ImmAdr DAddr
+            deriving(Eq, Show)
 
 data Instruction = Arith OpCode    RegIdx RegIdx RegIdx
                  | Jump  JmpCode   PC                 
                  | Load  LoadFrom  RegIdx
-                 | Store StoreFrom DAddr
+                 | Store StoreFrom RamAdr
                  | Push  RegIdx
                  | Pop   RegIdx
                  | EndProg
                  deriving(Eq, Show)
-data OpCode    = Nop   | Id | Incr | Decr | Neg | Not | Add | Sub | Mul  | Div | Mod | Eq | Ne | Lt | Gt | Le | Ge | And | Or  | Xor deriving(Eq, Show)
-data JmpCode   = NoJmp | UA | UR   | CA   | CR  | Back  deriving(Eq, Show)
-data LoadFrom  = RAddr DAddr | RImm Word deriving(Eq, Show)
-data StoreFrom = MReg RegIdx | MImm Word deriving(Eq, Show)
-data LdCode    = NoLoad  | LdImm | LdAddr | LdAlu  deriving(Eq, Show)
-data StCode    = NoStore | StImm | StReg           deriving(Eq, Show)
-data SpCode    = None    | Up    | Down            deriving(Eq, Show)
-
+data OpCode      = Nop   
+                 | Id 
+                 | Incr 
+                 | Decr 
+                 | Neg 
+                 | Not 
+                 | Add 
+                 | Sub 
+                 | Mul  
+                 | Div 
+                 | Mod 
+                 | Eq 
+                 | Ne 
+                 | Lt 
+                 | Gt 
+                 | Le 
+                 | Ge 
+                 | And 
+                 | Or  
+                 | Xor deriving(Eq, Show)
+data JmpCode     = NoJmp 
+                 | UA 
+                 | UR   
+                 | CA   
+                 | CR  
+                 | Back  
+                 deriving(Eq, Show)
+data LoadFrom    = RAddr DAddr 
+                 | RImm  Word 
+                 | RPtr  RegIdx
+                 deriving(Eq, Show)
+data StoreFrom   = MReg RegIdx 
+                 | MImm Word 
+                 deriving(Eq, Show)
+data LdCode      = NoLoad  
+                 | LdImm 
+                 | LdAddr 
+                 | LdAlu  
+                 deriving(Eq, Show)
+data StCode      = NoStore 
+                 | StImm 
+                 | StReg           
+                 deriving(Eq, Show)
+data SpCode      = None    
+                 | Up    
+                 | Down            
+                 deriving(Eq, Show)
 data MachCode = MachCode {
     ldCode     :: LdCode
     , stCode   :: StCode
@@ -40,8 +84,8 @@ data MachCode = MachCode {
     , fromReg0 :: RegIdx -- oprand 0
     , fromReg1 :: RegIdx -- oprand 1
     , toReg    :: RegIdx -- write back register
-    , toAddr   :: DAddr  -- write address
-    , fromAddr :: DAddr  -- read address
+    , toAddr   :: RamAdr  -- write address
+    , fromAddr :: RamAdr  -- read address
     , we       :: Bool
     , jmpNum   :: PC
     } deriving(Eq, Show)
@@ -57,8 +101,8 @@ instance Default MachCode where
                    , fromReg0 = zeroreg
                    , fromReg1 = zeroreg
                    , toReg    = zeroreg
-                   , toAddr   = 0
-                   , fromAddr = 0
+                   , toAddr   = ImmAdr 0
+                   , fromAddr = ImmAdr 0
                    , we       = False
                    , jmpNum   = 0
                    }

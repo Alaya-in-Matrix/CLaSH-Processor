@@ -16,15 +16,16 @@ decode :: DAddr         -- ^ stack pointer
        -> Instruction   -- ^ current instruction
        -> MachCode      -- ^ target machine code
 decode sp instr = case instr of
-    Arith op r0 r1 r2  -> def {ldCode = LdAlu, opCode = op, fromReg0 = r0, fromReg1 = r1, toReg = r2}
-    Jump  jType jAddr  -> def {jmpCode = jType, jmpNum = jAddr}
-    Load (RImm n) rid  -> def {ldCode = LdImm, ldImm = n, toReg = rid}
-    Load (RAddr a) rid -> def {ldCode = LdAddr, fromAddr = a, toReg = rid}
-    Store (MImm n) a   -> def {stCode = StImm, stImm = n, toAddr = a, we = True}
-    Store (MReg r) a   -> def {stCode = StReg, fromReg0 = r, toAddr = a, we = True}
-    Push r             -> def {stCode = StReg, fromReg0 = r, toAddr = sp + 1, spCode = Up, we = True}
-    Pop r              -> def {ldCode = LdAddr, fromAddr = sp, toReg = r, spCode = Down}
-    EndProg            -> def {jmpCode = UR, jmpNum = 0} -- forever loop here
+    Arith op r0 r1 r2  -> def {ldCode  = LdAlu,  opCode   = op,  fromReg0 = r0, fromReg1 = r1, toReg = r2}
+    Jump  jType jAddr  -> def {jmpCode = jType,  jmpNum   = jAddr}
+    Load (RImm n) rid  -> def {ldCode  = LdImm,  ldImm    = n,   toReg    = rid}
+    Load (RAddr a) rid -> def {ldCode  = LdAddr, fromAddr = (ImmAdr a),   toReg    = rid}
+    Load (RPtr p)  rid -> def {ldCode  = LdAddr, fromAddr = (RegPtr p),   toReg    = rid}
+    Store (MImm n) a   -> def {stCode  = StImm,  stImm    = n,   toAddr   = a, we = True}
+    Store (MReg r) a   -> def {stCode  = StReg,  fromReg0 = r,   toAddr   = a, we = True}
+    Push r             -> def {stCode  = StReg,  fromReg0 = r,   toAddr   = ImmAdr (sp + 1), spCode = Up, we = True}
+    Pop r              -> def {ldCode  = LdAddr, fromAddr = ImmAdr sp,  toReg    = r, spCode = Down}
+    EndProg            -> def {jmpCode = UR,     jmpNum   = 0} -- forever loop here
 
 
 alu :: OpCode       -- operator
@@ -96,6 +97,10 @@ oEn bufLast toReg ldCode = memLoad || aluImm
     where memLoad = bufLast == oReg
           aluImm  = toReg   == oReg && (ldCode == LdImm || ldCode == LdAlu)
 
+getAddr :: Reg -> RamAdr -> DAddr
+getAddr _    (ImmAdr a) = a
+getAddr regs (RegPtr p) = fromIntegral $ regs !! p
+
 esprockellMealy :: PState -> PIn -> (PState, POut)
 esprockellMealy state (instr, memData, gpInEn, gpInput) = (state', out)
     where 
@@ -104,7 +109,9 @@ esprockellMealy state (instr, memData, gpInEn, gpInput) = (state', out)
         (aluOut, aluCnd) = alu opCode (x, y)
         cnd' = if fromReg0 == iReg || opCode == Id then gpInEn else aluCnd
         state'  = PState { reg = reg', cnd = cnd', pc = pc', sp = sp', ldBuf = ldBuf'}
-        out     = (toAddr, fromAddr, we, toMem, pc', gpOutEn, gpOut)
+        wAddr   = getAddr reg toAddr
+        rAddr   = getAddr reg fromAddr
+        out     = (wAddr, rAddr, we, toMem, pc', gpOutEn, gpOut)
         gpOut   = reg' !! oReg
         gpOutEn = oEn bufLast toReg ldCode
         (x, y)  = (reg0 !! fromReg0, reg0 !! fromReg1)
@@ -129,18 +136,3 @@ esprockell :: Signal PIn
            -> Signal POut
 esprockell = esprockellMealy `mealy` def
 
--- topEntity = esprockell
-
-
--- sys :: IRom
---     -> Signal (Instruction, Word)
--- sys prog = let (wAddr, rAddr, we, wData, pc') = unbundle $ esprockell pIn
---                pIn                            = bundle (romOut, ramOut)
---                ramOut                         = dataRam wAddr rAddr we wData
---                romOut                         = (prog !!) <$> pc
---                pc                             = register 0 $ pc'
---                nop                            = Arith Nop 0 0 0
---                dataRam                        = blockRam (repeat maxBound :: Mem)
---             in bundle (romOut, ramOut) -- instruction, data write to mem, data read from mem
-
--- topEntity = sys

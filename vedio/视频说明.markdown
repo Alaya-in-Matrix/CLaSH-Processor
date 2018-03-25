@@ -1,0 +1,4 @@
+# README
+
+* fib.MOV: 使用处理器指令编写的fibonacci函数，向PI输入一个二进制整数，向PO输出其fibonacci数, 其中，PI连接到switch, PO连接到LEDR, 视频中展示了0~6的fibonacci数，即switch从000~110
+* helloworld.MOV: 用PIO控制JTAG UART，使用nios2-terminal.exe在host PC上监控，按下reset键，输出hello world
